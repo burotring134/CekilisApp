@@ -61,29 +61,24 @@ function mem(): MemoryStore {
 export async function addParticipant(
   participant: Participant,
   fingerprint: string,
-  ip: string
+  _ip: string
 ): Promise<{ ok: boolean; reason?: string }> {
   if (redis) {
     const fpExists = await redis.sismember(KEY.fingerprints, fingerprint);
     if (fpExists) return { ok: false, reason: "duplicate-device" };
-    const ipExists = await redis.sismember(KEY.ips, ip);
-    if (ipExists) return { ok: false, reason: "duplicate-ip" };
     const state = (await redis.get<DrawState>(KEY.state)) ?? "idle";
     if (state !== "idle") return { ok: false, reason: "draw-locked" };
 
     await redis.hset(KEY.participants, { [participant.id]: JSON.stringify(participant) });
     await redis.sadd(KEY.fingerprints, fingerprint);
-    await redis.sadd(KEY.ips, ip);
     return { ok: true };
   }
 
   const store = mem();
   if (store.fingerprints.has(fingerprint)) return { ok: false, reason: "duplicate-device" };
-  if (store.ips.has(ip)) return { ok: false, reason: "duplicate-ip" };
   if (store.state !== "idle") return { ok: false, reason: "draw-locked" };
   store.participants.set(participant.id, participant);
   store.fingerprints.add(fingerprint);
-  store.ips.add(ip);
   return { ok: true };
 }
 
