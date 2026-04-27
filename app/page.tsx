@@ -61,9 +61,9 @@ export default function HomePage() {
   return (
     <main className="min-h-screen px-8 py-8">
       <div className="mx-auto grid h-[calc(100vh-4rem)] max-w-[1800px] grid-cols-[1fr_360px] gap-8">
-        <section className="flex flex-col items-center justify-center rounded-3xl border border-white/10 bg-white/[0.03] p-10 backdrop-blur-xl">
+        <section className="flex flex-col items-center justify-center rounded-3xl border border-white/10 bg-white/[0.04] p-10 shadow-[0_20px_80px_-20px_rgba(167,139,250,0.35)] backdrop-blur-xl">
           <Header stage={stage} count={snapshot.participants.length} />
-          <div className="mt-6 flex flex-1 items-center justify-center">
+          <div className="mt-4 flex flex-1 items-center justify-center w-full">
             {stage === "qr" && <QRStage url={joinUrl} count={snapshot.participants.length} />}
             {stage !== "qr" && (
               <Wheel
@@ -96,8 +96,12 @@ function Header({ stage, count }: { stage: "qr" | "wheel" | "winner"; count: num
   const { sub, title } = labels[stage];
   return (
     <header className="text-center">
-      <p className="text-sm uppercase tracking-[0.4em] text-brand-accent">Security Day IV — {sub}</p>
-      <h1 className="mt-2 text-4xl font-bold">{title}</h1>
+      <p className="text-xs sm:text-sm uppercase tracking-[0.4em] text-brand-accent">
+        Security Day IV — {sub}
+      </p>
+      <h1 className="mt-2 bg-gradient-to-r from-brand-rose via-white to-brand-accent bg-clip-text text-3xl font-bold text-transparent sm:text-4xl">
+        {title}
+      </h1>
     </header>
   );
 }

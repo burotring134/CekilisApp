@@ -15,10 +15,10 @@ export default function WinnerReveal({ winner }: WinnerRevealProps) {
     const burst = () => {
       if (cancelled) return;
       confetti({
-        particleCount: 120,
-        spread: 100,
+        particleCount: 140,
+        spread: 110,
         origin: { y: 0.55 },
-        colors: ["#7c3aed", "#06b6d4", "#fbbf24", "#ec4899", "#10b981"],
+        colors: ["#fbcfe8", "#bae6fd", "#bbf7d0", "#fef3c7", "#ddd6fe", "#fed7aa"],
       });
       confetti({
         particleCount: 80,
@@ -50,7 +50,7 @@ export default function WinnerReveal({ winner }: WinnerRevealProps) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
-      className="fixed inset-0 z-30 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+      className="fixed inset-0 z-30 flex items-center justify-center bg-[#1e1b4b]/80 backdrop-blur-md"
     >
       <motion.div
         initial={{ scale: 0.4, opacity: 0, y: 50 }}
@@ -70,9 +70,9 @@ export default function WinnerReveal({ winner }: WinnerRevealProps) {
           initial={{ scale: 0.8 }}
           animate={{ scale: [0.8, 1.1, 1] }}
           transition={{ delay: 0.8, duration: 0.8 }}
-          className="mt-6 bg-gradient-to-r from-amber-300 via-yellow-100 to-amber-300 bg-clip-text text-7xl font-black text-transparent md:text-9xl"
+          className="mt-6 bg-gradient-to-r from-pink-200 via-amber-100 to-violet-200 bg-clip-text text-7xl font-black text-transparent md:text-9xl"
           style={{
-            filter: "drop-shadow(0 0 40px rgba(251, 191, 36, 0.5))",
+            filter: "drop-shadow(0 0 50px rgba(253, 230, 138, 0.55))",
           }}
         >
           {winner.name}

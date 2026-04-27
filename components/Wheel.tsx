@@ -10,14 +10,22 @@ interface WheelProps {
   winnerId: string | null;
   spinSeed: number | null;
   onSpinEnd?: () => void;
-  size?: number;
 }
 
-const PALETTE = [
-  "#7c3aed", "#06b6d4", "#ec4899", "#f59e0b",
-  "#10b981", "#3b82f6", "#ef4444", "#8b5cf6",
-  "#14b8a6", "#f97316",
+const PASTEL = [
+  "#fbcfe8", // pink
+  "#bae6fd", // sky
+  "#bbf7d0", // mint
+  "#fef3c7", // butter
+  "#ddd6fe", // lavender
+  "#fecaca", // rose
+  "#a7f3d0", // seafoam
+  "#fed7aa", // peach
+  "#e9d5ff", // lilac
+  "#bfdbfe", // baby blue
 ];
+
+const VIEW = 600;
 
 export default function Wheel({
   participants,
@@ -25,7 +33,6 @@ export default function Wheel({
   winnerId,
   spinSeed,
   onSpinEnd,
-  size = 560,
 }: WheelProps) {
   const controls = useAnimation();
   const lastRotation = useRef(0);
@@ -39,15 +46,13 @@ export default function Wheel({
       startAngle: i * sliceAngle,
       endAngle: (i + 1) * sliceAngle,
       midAngle: i * sliceAngle + sliceAngle / 2,
-      color: PALETTE[i % PALETTE.length],
+      color: PASTEL[i % PASTEL.length],
     }));
   }, [participants]);
 
   useEffect(() => {
     if (!spinning || !winnerId || spinSeed === null || segments.length === 0) {
-      if (!spinning) {
-        hasSpun.current = false;
-      }
+      if (!spinning) hasSpun.current = false;
       return;
     }
     if (hasSpun.current) return;
@@ -76,91 +81,124 @@ export default function Wheel({
 
   if (segments.length === 0) {
     return (
-      <div
-        style={{ width: size, height: size }}
-        className="flex items-center justify-center rounded-full border-4 border-dashed border-white/20 text-white/40"
-      >
+      <div className="flex aspect-square w-full max-w-[560px] items-center justify-center rounded-full border-4 border-dashed border-white/20 text-white/40">
         Katılımcı bekleniyor…
       </div>
     );
   }
 
-  const radius = size / 2;
+  const radius = VIEW / 2;
   const center = radius;
-  const labelRadius = radius * 0.65;
+  const labelRadius = radius * 0.62;
+  const fontSize = Math.max(11, Math.min(22, 320 / Math.max(8, segments.length)));
+  const maxChars = Math.max(8, Math.floor(40 / Math.max(1, segments.length / 6)));
 
   return (
-    <div className="relative" style={{ width: size, height: size }}>
+    <div className="relative aspect-square w-full max-w-[620px]">
       <div
-        className="absolute z-20 -translate-x-1/2"
-        style={{ left: "50%", top: -8 }}
+        className="pointer-events-none absolute z-20 -translate-x-1/2"
+        style={{ left: "50%", top: "-2%" }}
       >
-        <div
-          style={{
-            width: 0,
-            height: 0,
-            borderLeft: "22px solid transparent",
-            borderRight: "22px solid transparent",
-            borderTop: "36px solid #fbbf24",
-            filter: "drop-shadow(0 4px 8px rgba(0,0,0,0.5))",
-          }}
-        />
+        <svg width="56" height="56" viewBox="0 0 56 56">
+          <path
+            d="M28 50 L8 8 L48 8 Z"
+            fill="#fde68a"
+            stroke="#92400e"
+            strokeWidth="2"
+            strokeLinejoin="round"
+            style={{ filter: "drop-shadow(0 6px 12px rgba(0,0,0,0.4))" }}
+          />
+        </svg>
       </div>
 
       <motion.svg
         animate={controls}
         initial={{ rotate: 0 }}
-        width={size}
-        height={size}
-        viewBox={`0 0 ${size} ${size}`}
-        className="drop-shadow-[0_0_60px_rgba(124,58,237,0.4)]"
+        viewBox={`0 0 ${VIEW} ${VIEW}`}
+        className="h-full w-full drop-shadow-[0_0_60px_rgba(221,214,254,0.35)]"
       >
-        {segments.map((seg) => {
-          const startRad = (seg.startAngle - 90) * (Math.PI / 180);
-          const endRad = (seg.endAngle - 90) * (Math.PI / 180);
-          const x1 = center + radius * Math.cos(startRad);
-          const y1 = center + radius * Math.sin(startRad);
-          const x2 = center + radius * Math.cos(endRad);
-          const y2 = center + radius * Math.sin(endRad);
-          const largeArc = seg.endAngle - seg.startAngle > 180 ? 1 : 0;
+        <circle cx={center} cy={center} r={radius - 1} fill="#1e1b4b" />
 
-          const path = `M ${center} ${center} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`;
+        {segments.length === 1 ? (
+          <g>
+            <circle
+              cx={center}
+              cy={center}
+              r={radius - 6}
+              fill={segments[0].color}
+              stroke="#1e1b4b"
+              strokeWidth={3}
+            />
+            <text
+              x={center}
+              y={center - labelRadius * 0.4}
+              fill="#1e1b4b"
+              fontSize={fontSize * 1.5}
+              fontWeight={800}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              style={{ pointerEvents: "none" }}
+            >
+              {truncate(segments[0].participant.name, 20)}
+            </text>
+          </g>
+        ) : (
+          segments.map((seg) => {
+            const startRad = (seg.startAngle - 90) * (Math.PI / 180);
+            const endRad = (seg.endAngle - 90) * (Math.PI / 180);
+            const r = radius - 6;
+            const x1 = center + r * Math.cos(startRad);
+            const y1 = center + r * Math.sin(startRad);
+            const x2 = center + r * Math.cos(endRad);
+            const y2 = center + r * Math.sin(endRad);
+            const largeArc = seg.endAngle - seg.startAngle > 180 ? 1 : 0;
+            const path = `M ${center} ${center} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} Z`;
 
-          const labelRad = (seg.midAngle - 90) * (Math.PI / 180);
-          const labelX = center + labelRadius * Math.cos(labelRad);
-          const labelY = center + labelRadius * Math.sin(labelRad);
+            const labelRad = (seg.midAngle - 90) * (Math.PI / 180);
+            const labelX = center + labelRadius * Math.cos(labelRad);
+            const labelY = center + labelRadius * Math.sin(labelRad);
+            const display = truncate(seg.participant.name, maxChars);
 
-          const fontSize = Math.max(10, Math.min(18, 280 / Math.max(8, segments.length)));
-          const maxChars = Math.max(8, Math.floor(40 / Math.max(1, segments.length / 6)));
-          const display = truncate(seg.participant.name, maxChars);
+            return (
+              <g key={seg.participant.id}>
+                <path d={path} fill={seg.color} stroke="#1e1b4b" strokeWidth={2} />
+                <text
+                  x={labelX}
+                  y={labelY}
+                  fill="#1e1b4b"
+                  fontSize={fontSize}
+                  fontWeight={700}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  transform={`rotate(${seg.midAngle}, ${labelX}, ${labelY})`}
+                  style={{ pointerEvents: "none" }}
+                >
+                  {display}
+                </text>
+              </g>
+            );
+          })
+        )}
 
-          return (
-            <g key={seg.participant.id}>
-              <path d={path} fill={seg.color} stroke="#0a0a14" strokeWidth={2} />
-              <text
-                x={labelX}
-                y={labelY}
-                fill="#fff"
-                fontSize={fontSize}
-                fontWeight={600}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                transform={`rotate(${seg.midAngle}, ${labelX}, ${labelY})`}
-                style={{ pointerEvents: "none", textShadow: "0 1px 2px rgba(0,0,0,0.7)" }}
-              >
-                {display}
-              </text>
-            </g>
-          );
-        })}
         <circle
           cx={center}
           cy={center}
-          r={radius * 0.12}
-          fill="#0a0a14"
-          stroke="#fbbf24"
-          strokeWidth={4}
+          r={radius - 4}
+          fill="none"
+          stroke="#fef3c7"
+          strokeWidth={6}
+          opacity={0.9}
         />
+
+        <circle
+          cx={center}
+          cy={center}
+          r={radius * 0.1}
+          fill="#fef3c7"
+          stroke="#92400e"
+          strokeWidth={3}
+        />
+        <circle cx={center} cy={center} r={radius * 0.04} fill="#92400e" />
       </motion.svg>
     </div>
   );

@@ -9,9 +9,12 @@ export default {
     extend: {
       colors: {
         brand: {
-          primary: "#7c3aed",
-          accent: "#06b6d4",
-          dark: "#0a0a14",
+          primary: "#a78bfa",
+          accent: "#7dd3fc",
+          gold: "#fde68a",
+          rose: "#fbcfe8",
+          mint: "#bbf7d0",
+          dark: "#1e1b4b",
         },
       },
       fontFamily: {
