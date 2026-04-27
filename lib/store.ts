@@ -18,6 +18,7 @@ export interface StoreSnapshot {
 const KEY = {
   participants: "raffle:participants",
   fingerprints: "raffle:fingerprints",
+  idToFp: "raffle:id-to-fp",
   ips: "raffle:ips",
   state: "raffle:state",
   winner: "raffle:winner",
@@ -36,6 +37,7 @@ const redis = hasUpstash
 type MemoryStore = {
   participants: Map<string, Participant>;
   fingerprints: Set<string>;
+  idToFp: Map<string, string>;
   ips: Set<string>;
   state: DrawState;
   winner: Participant | null;
@@ -49,6 +51,7 @@ function mem(): MemoryStore {
     globalForMem.__raffleMem = {
       participants: new Map(),
       fingerprints: new Set(),
+      idToFp: new Map(),
       ips: new Set(),
       state: "idle",
       winner: null,
@@ -71,6 +74,7 @@ export async function addParticipant(
 
     await redis.hset(KEY.participants, { [participant.id]: JSON.stringify(participant) });
     await redis.sadd(KEY.fingerprints, fingerprint);
+    await redis.hset(KEY.idToFp, { [participant.id]: fingerprint });
     return { ok: true };
   }
 
@@ -79,7 +83,15 @@ export async function addParticipant(
   if (store.state !== "idle") return { ok: false, reason: "draw-locked" };
   store.participants.set(participant.id, participant);
   store.fingerprints.add(fingerprint);
+  store.idToFp.set(participant.id, fingerprint);
   return { ok: true };
+}
+
+export async function isFingerprintRegistered(fingerprint: string): Promise<boolean> {
+  if (redis) {
+    return Boolean(await redis.sismember(KEY.fingerprints, fingerprint));
+  }
+  return mem().fingerprints.has(fingerprint);
 }
 
 export async function listParticipants(): Promise<Participant[]> {
@@ -96,10 +108,17 @@ export async function listParticipants(): Promise<Participant[]> {
 
 export async function deleteParticipant(id: string): Promise<void> {
   if (redis) {
+    const fp = await redis.hget<string>(KEY.idToFp, id);
     await redis.hdel(KEY.participants, id);
+    await redis.hdel(KEY.idToFp, id);
+    if (fp) await redis.srem(KEY.fingerprints, fp);
     return;
   }
-  mem().participants.delete(id);
+  const store = mem();
+  const fp = store.idToFp.get(id);
+  store.participants.delete(id);
+  store.idToFp.delete(id);
+  if (fp) store.fingerprints.delete(fp);
 }
 
 export async function getState(): Promise<DrawState> {
@@ -157,6 +176,7 @@ export async function reset(): Promise<void> {
     await redis.del(
       KEY.participants,
       KEY.fingerprints,
+      KEY.idToFp,
       KEY.ips,
       KEY.state,
       KEY.winner,
@@ -167,6 +187,7 @@ export async function reset(): Promise<void> {
   const store = mem();
   store.participants.clear();
   store.fingerprints.clear();
+  store.idToFp.clear();
   store.ips.clear();
   store.state = "idle";
   store.winner = null;

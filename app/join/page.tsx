@@ -17,16 +17,33 @@ export default function JoinPage() {
 
   useEffect(() => {
     (async () => {
-      const localJoined = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
-      if (localJoined) {
-        setSavedName(localJoined);
-        setStatus("duplicate");
-        return;
-      }
       try {
         const fp = await FingerprintJS.load();
         const result = await fp.get();
-        setFingerprint(result.visitorId);
+        const visitorId = result.visitorId;
+        setFingerprint(visitorId);
+
+        const res = await fetch(`/api/check?fingerprint=${encodeURIComponent(visitorId)}`, {
+          cache: "no-store",
+        });
+        const data = await res.json();
+
+        if (data.registered) {
+          const localName = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
+          if (localName) setSavedName(localName);
+          setStatus("duplicate");
+          return;
+        }
+
+        if (typeof window !== "undefined") {
+          localStorage.removeItem(STORAGE_KEY);
+        }
+
+        if (data.state === "drawing" || data.state === "finished") {
+          setStatus("locked");
+          return;
+        }
+
         setStatus("ready");
       } catch {
         setStatus("error");
@@ -54,7 +71,7 @@ export default function JoinPage() {
         }
         setSavedName(fullName);
         setStatus("success");
-      } else if (data.reason === "duplicate-device" || data.reason === "duplicate-ip") {
+      } else if (data.reason === "duplicate-device") {
         setStatus("duplicate");
       } else if (data.reason === "draw-locked") {
         setStatus("locked");
@@ -119,7 +136,7 @@ export default function JoinPage() {
             <button
               type="submit"
               disabled={status === "submitting"}
-              className="mt-6 w-full rounded-lg bg-brand-primary px-4 py-3 text-base font-semibold transition hover:bg-brand-primary/90 disabled:opacity-50"
+              className="mt-6 w-full rounded-lg bg-brand-primary px-4 py-3 text-base font-semibold text-brand-dark transition hover:brightness-110 disabled:opacity-50"
             >
               {status === "submitting" ? "Gönderiliyor…" : "Katıl"}
             </button>
@@ -127,7 +144,7 @@ export default function JoinPage() {
         ) : null}
 
         {status === "success" && (
-          <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-6 text-center">
+          <div className="rounded-2xl border border-emerald-300/30 bg-emerald-200/10 p-6 text-center">
             <div className="text-4xl">✓</div>
             <h2 className="mt-2 text-xl font-semibold">Kaydoldun!</h2>
             <p className="mt-1 text-sm text-white/70">
@@ -139,7 +156,7 @@ export default function JoinPage() {
         )}
 
         {status === "duplicate" && (
-          <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-6 text-center">
+          <div className="rounded-2xl border border-amber-300/30 bg-amber-200/10 p-6 text-center">
             <div className="text-4xl">⚠</div>
             <h2 className="mt-2 text-xl font-semibold">Zaten kayıtlısın</h2>
             <p className="mt-1 text-sm text-white/70">
@@ -149,7 +166,7 @@ export default function JoinPage() {
         )}
 
         {status === "locked" && (
-          <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-6 text-center">
+          <div className="rounded-2xl border border-rose-300/30 bg-rose-200/10 p-6 text-center">
             <h2 className="text-xl font-semibold">Çekiliş başladı</h2>
             <p className="mt-1 text-sm text-white/70">
               Yeni katılım kapandı. Bir dahaki sefere!
