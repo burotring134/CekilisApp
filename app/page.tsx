@@ -1,14 +1,22 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import ParticipantList from "@/components/ParticipantList";
-import type { StoreSnapshot } from "@/lib/store";
+import type { StoreSnapshot, Participant, DrawState } from "@/lib/store";
 
 const Wheel = dynamic(() => import("@/components/Wheel"), { ssr: false });
 const WinnerReveal = dynamic(() => import("@/components/WinnerReveal"), { ssr: false });
+
+interface LightSnapshot {
+  state: DrawState;
+  participantCount: number;
+  winner: Participant | null;
+  spinSeed: number | null;
+  finishedAt: number | null;
+}
 
 export default function HomePage() {
   const [snapshot, setSnapshot] = useState<StoreSnapshot>({
@@ -21,6 +29,8 @@ export default function HomePage() {
   const [joinUrl, setJoinUrl] = useState("");
   const [showWinner, setShowWinner] = useState(false);
   const [pageMountedAt] = useState(() => Date.now());
+  const lastCount = useRef(-1);
+  const lastState = useRef<DrawState>("idle");
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -30,16 +40,43 @@ export default function HomePage() {
 
   useEffect(() => {
     let cancelled = false;
-    const tick = async () => {
-      try {
-        const res = await fetch("/api/state", { cache: "no-store" });
-        const data = (await res.json()) as StoreSnapshot;
-        if (!cancelled) setSnapshot(data);
-      } catch {
-        // network hiccup
+
+    async function fetchFull() {
+      const res = await fetch("/api/state", { cache: "no-store" });
+      const data = (await res.json()) as StoreSnapshot;
+      if (!cancelled) {
+        setSnapshot(data);
+        lastCount.current = data.participants.length;
+        lastState.current = data.state;
       }
-    };
-    tick();
+    }
+
+    async function tick() {
+      try {
+        const res = await fetch("/api/state?light=1", { cache: "no-store" });
+        const light = (await res.json()) as LightSnapshot;
+        if (cancelled) return;
+
+        const countChanged = light.participantCount !== lastCount.current;
+        const stateChanged = light.state !== lastState.current;
+
+        if (countChanged || stateChanged) {
+          await fetchFull();
+        } else {
+          setSnapshot((prev) => ({
+            ...prev,
+            state: light.state,
+            winner: light.winner,
+            spinSeed: light.spinSeed,
+            finishedAt: light.finishedAt,
+          }));
+        }
+      } catch {
+        // network hiccup, ignore
+      }
+    }
+
+    fetchFull();
     const id = setInterval(tick, 1500);
     return () => {
       cancelled = true;

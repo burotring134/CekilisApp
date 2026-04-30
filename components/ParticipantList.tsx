@@ -8,10 +8,14 @@ interface ParticipantListProps {
   highlightId?: string | null;
 }
 
+const HEAVY_LIST_THRESHOLD = 80;
+
 export default function ParticipantList({
   participants,
   highlightId,
 }: ParticipantListProps) {
+  const isHeavy = participants.length > HEAVY_LIST_THRESHOLD;
+
   return (
     <aside className="flex h-full flex-col overflow-hidden rounded-3xl border border-brand-teal/20 bg-brand-card/50 p-6 backdrop-blur-xl">
       <header className="flex items-baseline justify-between border-b border-brand-teal/15 pb-4">
@@ -30,6 +34,12 @@ export default function ParticipantList({
           <p className="mt-6 text-center text-sm text-brand-ice/40">
             Henüz katılan yok…
           </p>
+        ) : isHeavy ? (
+          <ul className="space-y-1">
+            {participants.map((p, idx) => (
+              <Row key={p.id} p={p} idx={idx} highlightId={highlightId} />
+            ))}
+          </ul>
         ) : (
           <ul className="space-y-1.5">
             <AnimatePresence initial={false}>
@@ -74,5 +84,36 @@ export default function ParticipantList({
         )}
       </div>
     </aside>
+  );
+}
+
+function Row({
+  p,
+  idx,
+  highlightId,
+}: {
+  p: Participant;
+  idx: number;
+  highlightId?: string | null;
+}) {
+  const isWinner = highlightId === p.id;
+  return (
+    <li
+      className={`flex items-center justify-between rounded-lg px-3 py-1.5 text-sm ${
+        isWinner ? "bg-brand-teal/15 text-brand-ice ring-1 ring-brand-teal" : ""
+      }`}
+    >
+      <span className="flex items-center gap-2">
+        <span className="w-8 text-right text-[10px] font-bold text-brand-ice/40">
+          {idx + 1}
+        </span>
+        <span className="truncate">{p.name}</span>
+      </span>
+      {isWinner && (
+        <span className="ml-2 rounded-full bg-brand-teal px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-brand-night">
+          ★
+        </span>
+      )}
+    </li>
   );
 }

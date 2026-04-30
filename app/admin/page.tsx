@@ -29,17 +29,46 @@ export default function AdminPage() {
   useEffect(() => {
     if (!authed) return;
     let cancelled = false;
-    const tick = async () => {
+    let lastCount = -1;
+    let lastState = "";
+
+    async function fetchFull() {
+      const res = await fetch("/api/state", { cache: "no-store" });
+      const data = (await res.json()) as StoreSnapshot;
+      if (!cancelled) {
+        setSnapshot(data);
+        lastCount = data.participants.length;
+        lastState = data.state;
+      }
+    }
+
+    async function tick() {
       try {
-        const res = await fetch("/api/state", { cache: "no-store" });
-        const data = (await res.json()) as StoreSnapshot;
-        if (!cancelled) setSnapshot(data);
+        const res = await fetch("/api/state?light=1", { cache: "no-store" });
+        const light = await res.json();
+        if (cancelled) return;
+        if (light.participantCount !== lastCount || light.state !== lastState) {
+          await fetchFull();
+        } else {
+          setSnapshot((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  state: light.state,
+                  winner: light.winner,
+                  spinSeed: light.spinSeed,
+                  finishedAt: light.finishedAt,
+                }
+              : prev
+          );
+        }
       } catch {
         // ignore
       }
-    };
-    tick();
-    const id = setInterval(tick, 2000);
+    }
+
+    fetchFull();
+    const id = setInterval(tick, 2500);
     return () => {
       cancelled = true;
       clearInterval(id);

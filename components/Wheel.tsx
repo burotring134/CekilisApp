@@ -14,19 +14,22 @@ interface WheelProps {
 }
 
 const SLICE_COLORS = [
-  "#0e7490", // cyan-700 deep
-  "#155e75", // cyan-800 darker
-  "#1e3a8a", // indigo deep
-  "#3730a3", // indigo dark
-  "#0891b2", // cyan-600
-  "#1d4ed8", // blue-700
   "#0e7490",
-  "#312e81", // indigo-900
-  "#0369a1", // sky-700
+  "#155e75",
+  "#1e3a8a",
+  "#3730a3",
+  "#0891b2",
+  "#1d4ed8",
+  "#0e7490",
+  "#312e81",
+  "#0369a1",
   "#1e40af",
 ];
 
 const VIEW = 600;
+const SHOW_LABELS_MAX = 40;
+const SHOW_INDIVIDUAL_SLICES_MAX = 150;
+const DECORATIVE_SEGMENTS = 24;
 
 export default function Wheel({
   participants,
@@ -38,6 +41,13 @@ export default function Wheel({
   const controls = useAnimation();
   const lastRotation = useRef(0);
   const hasSpun = useRef(false);
+
+  const renderMode: "labeled" | "slices" | "decorative" =
+    participants.length <= SHOW_LABELS_MAX
+      ? "labeled"
+      : participants.length <= SHOW_INDIVIDUAL_SLICES_MAX
+      ? "slices"
+      : "decorative";
 
   const segments = useMemo(() => {
     if (participants.length === 0) return [];
@@ -51,6 +61,15 @@ export default function Wheel({
     }));
   }, [participants]);
 
+  const decorativeSegments = useMemo(() => {
+    const sliceAngle = 360 / DECORATIVE_SEGMENTS;
+    return Array.from({ length: DECORATIVE_SEGMENTS }, (_, i) => ({
+      startAngle: i * sliceAngle,
+      endAngle: (i + 1) * sliceAngle,
+      color: SLICE_COLORS[i % SLICE_COLORS.length],
+    }));
+  }, []);
+
   useEffect(() => {
     if (!spinning || !winnerId || spinSeed === null || segments.length === 0) {
       if (!spinning) hasSpun.current = false;
@@ -59,14 +78,20 @@ export default function Wheel({
     if (hasSpun.current) return;
     hasSpun.current = true;
 
-    const winnerIndex = segments.findIndex((s) => s.participant.id === winnerId);
-    if (winnerIndex < 0) return;
-
-    const sliceAngle = 360 / segments.length;
-    const targetSliceMid = winnerIndex * sliceAngle + sliceAngle / 2;
-    const jitter = (spinSeed - 0.5) * sliceAngle * 0.6;
-    const baseRotations = 6 + Math.floor(spinSeed * 4);
-    const targetRotation = baseRotations * 360 + (360 - targetSliceMid) + jitter;
+    let targetRotation: number;
+    if (renderMode === "decorative") {
+      // No real winner slice to align to — just spin a randomized amount
+      const baseRotations = 6 + Math.floor(spinSeed * 4);
+      targetRotation = baseRotations * 360 + spinSeed * 360;
+    } else {
+      const winnerIndex = segments.findIndex((s) => s.participant.id === winnerId);
+      if (winnerIndex < 0) return;
+      const sliceAngle = 360 / segments.length;
+      const targetSliceMid = winnerIndex * sliceAngle + sliceAngle / 2;
+      const jitter = (spinSeed - 0.5) * sliceAngle * 0.6;
+      const baseRotations = 6 + Math.floor(spinSeed * 4);
+      targetRotation = baseRotations * 360 + (360 - targetSliceMid) + jitter;
+    }
     const finalRotation = lastRotation.current + targetRotation;
 
     controls
@@ -78,7 +103,7 @@ export default function Wheel({
         lastRotation.current = finalRotation;
         onSpinEnd?.();
       });
-  }, [spinning, winnerId, spinSeed, segments, controls, onSpinEnd]);
+  }, [spinning, winnerId, spinSeed, segments, controls, onSpinEnd, renderMode]);
 
   if (segments.length === 0) {
     return (
@@ -94,10 +119,21 @@ export default function Wheel({
   const fontSize = Math.max(11, Math.min(20, 320 / Math.max(8, segments.length)));
   const maxChars = Math.max(8, Math.floor(40 / Math.max(1, segments.length / 6)));
   const hubRadius = radius * 0.22;
+  const r = radius - 8;
+
+  function pathFor(startAngle: number, endAngle: number): string {
+    const startRad = (startAngle - 90) * (Math.PI / 180);
+    const endRad = (endAngle - 90) * (Math.PI / 180);
+    const x1 = center + r * Math.cos(startRad);
+    const y1 = center + r * Math.sin(startRad);
+    const x2 = center + r * Math.cos(endRad);
+    const y2 = center + r * Math.sin(endRad);
+    const largeArc = endAngle - startAngle > 180 ? 1 : 0;
+    return `M ${center} ${center} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} Z`;
+  }
 
   return (
     <div className="relative aspect-square w-full max-w-[640px]">
-      {/* Outer halo glow */}
       <div
         className="pointer-events-none absolute inset-[-8%] rounded-full opacity-70 blur-3xl"
         style={{
@@ -106,7 +142,6 @@ export default function Wheel({
         }}
       />
 
-      {/* Pointer */}
       <div
         className="pointer-events-none absolute z-30 -translate-x-1/2"
         style={{ left: "50%", top: "-3%" }}
@@ -130,7 +165,6 @@ export default function Wheel({
         </svg>
       </div>
 
-      {/* Wheel */}
       <motion.svg
         animate={controls}
         initial={{ rotate: 0 }}
@@ -138,25 +172,22 @@ export default function Wheel({
         className="relative h-full w-full"
         style={{ filter: "drop-shadow(0 0 40px rgba(77,217,214,0.25))" }}
       >
-        <defs>
-          {segments.map((seg, i) => (
-            <radialGradient key={`g-${i}`} id={`slice-${i}`} cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor={seg.color} stopOpacity="1" />
-              <stop offset="100%" stopColor={seg.color} stopOpacity="0.8" />
-            </radialGradient>
-          ))}
-        </defs>
+        <circle
+          cx={center}
+          cy={center}
+          r={radius - 2}
+          fill="#0d1426"
+          stroke="#4dd9d6"
+          strokeWidth="3"
+        />
 
-        {/* Outer ring */}
-        <circle cx={center} cy={center} r={radius - 2} fill="#0d1426" stroke="#4dd9d6" strokeWidth="3" />
-
-        {segments.length === 1 ? (
+        {segments.length === 1 && (
           <g>
             <circle
               cx={center}
               cy={center}
-              r={radius - 8}
-              fill={`url(#slice-0)`}
+              r={r}
+              fill={segments[0].color}
               stroke="#0d1426"
               strokeWidth={3}
             />
@@ -173,26 +204,16 @@ export default function Wheel({
               {truncate(segments[0].participant.name, 20)}
             </text>
           </g>
-        ) : (
-          segments.map((seg, i) => {
-            const startRad = (seg.startAngle - 90) * (Math.PI / 180);
-            const endRad = (seg.endAngle - 90) * (Math.PI / 180);
-            const r = radius - 8;
-            const x1 = center + r * Math.cos(startRad);
-            const y1 = center + r * Math.sin(startRad);
-            const x2 = center + r * Math.cos(endRad);
-            const y2 = center + r * Math.sin(endRad);
-            const largeArc = seg.endAngle - seg.startAngle > 180 ? 1 : 0;
-            const path = `M ${center} ${center} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} Z`;
+        )}
 
+        {segments.length > 1 && renderMode === "labeled" &&
+          segments.map((seg) => {
             const labelRad = (seg.midAngle - 90) * (Math.PI / 180);
             const labelX = center + labelRadius * Math.cos(labelRad);
             const labelY = center + labelRadius * Math.sin(labelRad);
-            const display = truncate(seg.participant.name, maxChars);
-
             return (
               <g key={seg.participant.id}>
-                <path d={path} fill={`url(#slice-${i})`} stroke="#0d1426" strokeWidth={2} />
+                <path d={pathFor(seg.startAngle, seg.endAngle)} fill={seg.color} stroke="#0d1426" strokeWidth={2} />
                 <text
                   x={labelX}
                   y={labelY}
@@ -208,14 +229,34 @@ export default function Wheel({
                     letterSpacing: "0.02em",
                   }}
                 >
-                  {display}
+                  {truncate(seg.participant.name, maxChars)}
                 </text>
               </g>
             );
-          })
-        )}
+          })}
 
-        {/* Inner accent ring */}
+        {segments.length > 1 && renderMode === "slices" &&
+          segments.map((seg) => (
+            <path
+              key={seg.participant.id}
+              d={pathFor(seg.startAngle, seg.endAngle)}
+              fill={seg.color}
+              stroke="#0d1426"
+              strokeWidth={1}
+            />
+          ))}
+
+        {renderMode === "decorative" &&
+          decorativeSegments.map((seg, i) => (
+            <path
+              key={i}
+              d={pathFor(seg.startAngle, seg.endAngle)}
+              fill={seg.color}
+              stroke="#0d1426"
+              strokeWidth={2}
+            />
+          ))}
+
         <circle
           cx={center}
           cy={center}
@@ -227,7 +268,6 @@ export default function Wheel({
         />
       </motion.svg>
 
-      {/* Mascot at center (does NOT rotate with wheel) */}
       <div
         className="pointer-events-none absolute z-20 flex items-center justify-center rounded-full bg-brand-night ring-4 ring-brand-teal"
         style={{
@@ -250,6 +290,12 @@ export default function Wheel({
           />
         </div>
       </div>
+
+      {renderMode === "decorative" && (
+        <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-brand-night/80 px-3 py-1 text-[10px] uppercase tracking-widest text-brand-teal/80 backdrop-blur">
+          {participants.length} kişi havuzda
+        </div>
+      )}
     </div>
   );
 }

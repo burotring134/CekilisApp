@@ -90,6 +90,13 @@ export async function addParticipantsBulk(
   return { ok: true, added: participants.length };
 }
 
+export async function getParticipantCount(): Promise<number> {
+  if (redis) {
+    return Number((await redis.hlen(KEY.participants)) ?? 0);
+  }
+  return mem().participants.size;
+}
+
 export async function listParticipants(): Promise<Participant[]> {
   if (redis) {
     const raw = await redis.hgetall<Record<string, string | Participant>>(KEY.participants);
