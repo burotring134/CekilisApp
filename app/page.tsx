@@ -16,6 +16,7 @@ export default function HomePage() {
     participants: [],
     winner: null,
     spinSeed: null,
+    pastWinnerIds: [],
   });
   const [joinUrl, setJoinUrl] = useState("");
   const [showWinner, setShowWinner] = useState(false);
@@ -59,6 +60,19 @@ export default function HomePage() {
     return "qr";
   }, [snapshot.state]);
 
+  const eligibleParticipants = useMemo(() => {
+    const past = new Set(snapshot.pastWinnerIds ?? []);
+    return snapshot.participants.filter((p) => !past.has(p.id));
+  }, [snapshot.participants, snapshot.pastWinnerIds]);
+
+  const handleSpinEnd = async () => {
+    try {
+      await fetch("/api/draw", { method: "PATCH", cache: "no-store" });
+    } catch {
+      // ignore — admin can still press "Sonucu Göster" manually
+    }
+  };
+
   return (
     <main className="min-h-screen px-6 py-6 lg:px-10 lg:py-8">
       <div className="mx-auto grid h-[calc(100vh-3rem)] max-w-[1800px] grid-cols-1 gap-6 lg:h-[calc(100vh-4rem)] lg:grid-cols-[1fr_380px] lg:gap-8">
@@ -75,10 +89,11 @@ export default function HomePage() {
             {stage === "qr" && <QRStage url={joinUrl} count={snapshot.participants.length} />}
             {stage !== "qr" && (
               <Wheel
-                participants={snapshot.participants}
+                participants={eligibleParticipants}
                 spinning={snapshot.state === "drawing"}
                 winnerId={snapshot.winner?.id ?? null}
                 spinSeed={snapshot.spinSeed}
+                onSpinEnd={handleSpinEnd}
               />
             )}
           </div>
@@ -87,6 +102,7 @@ export default function HomePage() {
         <ParticipantList
           participants={snapshot.participants}
           highlightId={snapshot.state === "finished" ? snapshot.winner?.id : null}
+          pastWinnerIds={snapshot.pastWinnerIds ?? []}
         />
       </div>
 

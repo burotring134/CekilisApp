@@ -126,6 +126,24 @@ export default function AdminPage() {
     }
   }
 
+  async function nextDraw() {
+    setBusy(true);
+    try {
+      const res = await fetch("/api/draw", {
+        method: "PUT",
+        headers: { "x-admin-password": password },
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setMessage("Yeni çekiliş için hazır. Önceki kazanan havuzdan çıkarıldı.");
+      } else {
+        setMessage(`Hata: ${data.reason}`);
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
   if (!authed) {
     return (
       <main className="flex min-h-screen items-center justify-center px-6">
@@ -175,6 +193,10 @@ export default function AdminPage() {
     drawing: { text: "Çark dönüyor", color: "text-amber-300" },
     finished: { text: "Tamamlandı", color: "text-brand-teal" },
   };
+  const pastWinnerSet = new Set(snapshot?.pastWinnerIds ?? []);
+  const eligibleCount = (snapshot?.participants ?? []).filter(
+    (p) => !pastWinnerSet.has(p.id)
+  ).length;
 
   return (
     <main className="min-h-screen px-6 py-8">
@@ -206,7 +228,11 @@ export default function AdminPage() {
           <div className="flex flex-wrap gap-3">
             <button
               onClick={startDraw}
-              disabled={busy || state !== "idle" || (snapshot?.participants.length ?? 0) === 0}
+              disabled={
+                busy ||
+                state !== "idle" ||
+                eligibleCount === 0
+              }
               className="rounded-xl bg-gradient-to-r from-brand-teal to-brand-cyan px-5 py-3 text-sm font-bold text-brand-night shadow-glow-sm transition hover:brightness-110 active:scale-[0.98] disabled:opacity-30"
             >
               Çekilişi Başlat
@@ -219,11 +245,18 @@ export default function AdminPage() {
               Sonucu Göster
             </button>
             <button
+              onClick={nextDraw}
+              disabled={busy || state !== "finished"}
+              className="rounded-xl bg-gradient-to-r from-brand-violet to-brand-indigo px-5 py-3 text-sm font-bold text-white transition hover:brightness-110 active:scale-[0.98] disabled:opacity-30"
+            >
+              Yeni Çekiliş
+            </button>
+            <button
               onClick={resetAll}
               disabled={busy}
               className="rounded-xl border border-rose-400/30 bg-rose-500/10 px-5 py-3 text-sm font-bold text-rose-200 transition hover:bg-rose-500/20 active:scale-[0.98] disabled:opacity-30"
             >
-              Sıfırla
+              Tümünü Sıfırla
             </button>
           </div>
           {message && (
@@ -243,21 +276,35 @@ export default function AdminPage() {
             <h2 className="text-sm font-bold uppercase tracking-wider text-brand-ice/60">
               Katılımcılar
             </h2>
-            <span className="rounded-full border border-brand-teal/30 bg-brand-teal/10 px-3 py-0.5 text-sm font-bold text-brand-teal">
-              {snapshot?.participants.length ?? 0}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="rounded-full border border-brand-violet/30 bg-brand-violet/10 px-3 py-0.5 text-xs font-bold text-brand-violet">
+                Çekilişe katılacak: {eligibleCount}
+              </span>
+              <span className="rounded-full border border-brand-teal/30 bg-brand-teal/10 px-3 py-0.5 text-sm font-bold text-brand-teal">
+                {snapshot?.participants.length ?? 0}
+              </span>
+            </div>
           </div>
           {!snapshot || snapshot.participants.length === 0 ? (
             <p className="text-sm text-brand-ice/40">Henüz kayıt yok.</p>
           ) : (
             <ul className="divide-y divide-brand-teal/10">
-              {snapshot.participants.map((p, idx) => (
+              {snapshot.participants.map((p, idx) => {
+                const wonBefore = pastWinnerSet.has(p.id);
+                return (
                 <li key={p.id} className="flex items-center justify-between py-3">
                   <span className="flex items-center gap-3">
                     <span className="flex h-7 w-7 items-center justify-center rounded-md bg-brand-ink text-xs font-bold text-brand-ice/50">
                       {idx + 1}
                     </span>
-                    <span className="text-brand-ice">{p.name}</span>
+                    <span className={wonBefore ? "text-brand-ice/40 line-through" : "text-brand-ice"}>
+                      {p.name}
+                    </span>
+                    {wonBefore && (
+                      <span className="rounded-full border border-amber-300/40 bg-amber-300/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-200">
+                        ★ Kazandı
+                      </span>
+                    )}
                   </span>
                   <button
                     onClick={() => removeParticipant(p.id, p.name)}
@@ -267,7 +314,8 @@ export default function AdminPage() {
                     Sil
                   </button>
                 </li>
-              ))}
+                );
+              })}
             </ul>
           )}
         </section>

@@ -13,6 +13,7 @@ export interface StoreSnapshot {
   participants: Participant[];
   winner: Participant | null;
   spinSeed: number | null;
+  pastWinnerIds: string[];
 }
 
 const KEY = {
@@ -23,6 +24,7 @@ const KEY = {
   state: "raffle:state",
   winner: "raffle:winner",
   spinSeed: "raffle:spin",
+  pastWinners: "raffle:past-winners",
 };
 
 const hasUpstash = !!process.env.KV_REST_API_URL && !!process.env.KV_REST_API_TOKEN;
@@ -42,6 +44,7 @@ type MemoryStore = {
   state: DrawState;
   winner: Participant | null;
   spinSeed: number | null;
+  pastWinnerIds: string[];
 };
 
 const globalForMem = globalThis as unknown as { __raffleMem?: MemoryStore };
@@ -56,6 +59,7 @@ function mem(): MemoryStore {
       state: "idle",
       winner: null,
       spinSeed: null,
+      pastWinnerIds: [],
     };
   }
   return globalForMem.__raffleMem;
@@ -180,7 +184,8 @@ export async function reset(): Promise<void> {
       KEY.ips,
       KEY.state,
       KEY.winner,
-      KEY.spinSeed
+      KEY.spinSeed,
+      KEY.pastWinners
     );
     return;
   }
@@ -192,14 +197,39 @@ export async function reset(): Promise<void> {
   store.state = "idle";
   store.winner = null;
   store.spinSeed = null;
+  store.pastWinnerIds = [];
+}
+
+export async function getPastWinnerIds(): Promise<string[]> {
+  if (redis) {
+    return (await redis.lrange<string>(KEY.pastWinners, 0, -1)) ?? [];
+  }
+  return [...mem().pastWinnerIds];
+}
+
+export async function addPastWinnerId(id: string): Promise<void> {
+  if (redis) {
+    await redis.rpush(KEY.pastWinners, id);
+    return;
+  }
+  mem().pastWinnerIds.push(id);
+}
+
+export async function clearPastWinners(): Promise<void> {
+  if (redis) {
+    await redis.del(KEY.pastWinners);
+    return;
+  }
+  mem().pastWinnerIds = [];
 }
 
 export async function snapshot(): Promise<StoreSnapshot> {
-  const [state, participants, winner, spinSeed] = await Promise.all([
+  const [state, participants, winner, spinSeed, pastWinnerIds] = await Promise.all([
     getState(),
     listParticipants(),
     getWinner(),
     getSpinSeed(),
+    getPastWinnerIds(),
   ]);
-  return { state, participants, winner, spinSeed };
+  return { state, participants, winner, spinSeed, pastWinnerIds };
 }
