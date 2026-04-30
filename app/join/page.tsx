@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 
 type Status = "ready" | "submitting" | "success" | "locked" | "error";
@@ -11,6 +11,31 @@ export default function JoinPage() {
   const [surname, setSurname] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [savedName, setSavedName] = useState("");
+  const statusRef = useRef(status);
+  statusRef.current = status;
+
+  useEffect(() => {
+    function resetIfSuccess() {
+      if (statusRef.current === "success") {
+        setSavedName("");
+        setName("");
+        setSurname("");
+        setStatus("ready");
+      }
+    }
+    function onVisibility() {
+      if (document.visibilityState === "visible") resetIfSuccess();
+    }
+    function onPageShow(e: PageTransitionEvent) {
+      if (e.persisted) resetIfSuccess();
+    }
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pageshow", onPageShow);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pageshow", onPageShow);
+    };
+  }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
