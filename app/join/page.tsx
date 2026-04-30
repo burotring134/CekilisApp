@@ -1,9 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Image from "next/image";
-
-const STORAGE_KEY = "raffle-joined-v1";
 
 type Status = "ready" | "submitting" | "success" | "locked" | "error";
 
@@ -13,16 +11,6 @@ export default function JoinPage() {
   const [surname, setSurname] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [savedName, setSavedName] = useState("");
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        setSavedName(saved);
-        setStatus("success");
-      }
-    }
-  }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -36,11 +24,7 @@ export default function JoinPage() {
       });
       const data = await res.json();
       if (data.ok) {
-        const fullName = `${name.trim()} ${surname.trim()}`;
-        if (typeof window !== "undefined") {
-          localStorage.setItem(STORAGE_KEY, fullName);
-        }
-        setSavedName(fullName);
+        setSavedName(`${name.trim()} ${surname.trim()}`);
         setStatus("success");
       } else if (data.reason === "draw-locked") {
         setStatus("locked");
@@ -138,9 +122,6 @@ export default function JoinPage() {
               </p>
               <button
                 onClick={() => {
-                  if (typeof window !== "undefined") {
-                    localStorage.removeItem(STORAGE_KEY);
-                  }
                   setSavedName("");
                   setName("");
                   setSurname("");
