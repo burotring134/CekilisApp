@@ -68,6 +68,24 @@ export async function addParticipant(
   return { ok: true };
 }
 
+export async function addParticipantsBulk(
+  participants: Participant[]
+): Promise<{ ok: boolean; added: number; reason?: string }> {
+  if (participants.length === 0) return { ok: true, added: 0 };
+  if (redis) {
+    const state = (await redis.get<DrawState>(KEY.state)) ?? "idle";
+    if (state !== "idle") return { ok: false, added: 0, reason: "draw-locked" };
+    const obj: Record<string, string> = {};
+    for (const p of participants) obj[p.id] = JSON.stringify(p);
+    await redis.hset(KEY.participants, obj);
+    return { ok: true, added: participants.length };
+  }
+  const store = mem();
+  if (store.state !== "idle") return { ok: false, added: 0, reason: "draw-locked" };
+  for (const p of participants) store.participants.set(p.id, p);
+  return { ok: true, added: participants.length };
+}
+
 export async function listParticipants(): Promise<Participant[]> {
   if (redis) {
     const raw = await redis.hgetall<Record<string, string | Participant>>(KEY.participants);

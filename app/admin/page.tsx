@@ -13,6 +13,9 @@ export default function AdminPage() {
   const [snapshot, setSnapshot] = useState<StoreSnapshot | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [manualName, setManualName] = useState("");
+  const [manualSurname, setManualSurname] = useState("");
+  const [bulkText, setBulkText] = useState("");
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -141,6 +144,101 @@ export default function AdminPage() {
       }
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function addManual(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setMessage("");
+    try {
+      const res = await fetch("/api/participants", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: manualName, surname: manualSurname }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setMessage(`✓ ${manualName} ${manualSurname} eklendi.`);
+        setManualName("");
+        setManualSurname("");
+      } else {
+        setMessage(`Hata: ${data.reason}`);
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function parseBulkLines(text: string): string[] {
+    return text
+      .split(/\r?\n/)
+      .map((line) => {
+        const trimmed = line.trim();
+        if (!trimmed) return "";
+        // skip CSV header / our export headers
+        const lower = trimmed.toLowerCase();
+        if (
+          lower === "ad soyad" ||
+          lower === "isim" ||
+          lower === "name" ||
+          lower.startsWith("sıra,") ||
+          lower.startsWith("sira,")
+        ) {
+          return "";
+        }
+        // CSV line from our export: "1,Ali Yılmaz,30.04.2026 ..."
+        // pick the second column if there are commas/tabs/semicolons
+        const parts = trimmed.split(/[,;\t]/).map((p) => p.trim());
+        if (parts.length >= 2 && /^\d+$/.test(parts[0])) {
+          // first col is index → name is second
+          return parts[1].replace(/^"|"$/g, "");
+        }
+        if (parts.length >= 2 && parts[0].length > 0 && parts[1].length > 0) {
+          // two columns: ad / soyad
+          return `${parts[0]} ${parts[1]}`.replace(/"/g, "");
+        }
+        return parts[0].replace(/^"|"$/g, "");
+      })
+      .filter((s) => s.length > 0 && s.length <= 80);
+  }
+
+  async function addBulk() {
+    const names = parseBulkLines(bulkText);
+    if (names.length === 0) {
+      setMessage("Hata: geçerli isim bulunamadı.");
+      return;
+    }
+    if (!confirm(`${names.length} kişi eklenecek. Onaylıyor musun?`)) return;
+    setBusy(true);
+    setMessage("");
+    try {
+      const res = await fetch("/api/participants/bulk", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-admin-password": password,
+        },
+        body: JSON.stringify({ names }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setMessage(`✓ ${data.added} kişi eklendi.`);
+        setBulkText("");
+      } else {
+        setMessage(`Hata: ${data.reason}`);
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleFile(file: File) {
+    try {
+      const text = await file.text();
+      setBulkText(text);
+    } catch {
+      setMessage("Dosya okunamadı.");
     }
   }
 
@@ -276,6 +374,89 @@ export default function AdminPage() {
               <strong className="font-bold">Kazanan:</strong> {snapshot.winner.name}
             </p>
           )}
+        </section>
+
+        <section className="mt-6 rounded-2xl border border-brand-teal/15 bg-brand-card/50 p-6 backdrop-blur-xl">
+          <h2 className="mb-2 text-sm font-bold uppercase tracking-wider text-brand-ice/60">
+            Manuel Katılımcı Ekle
+          </h2>
+          <p className="text-xs text-brand-ice/50">
+            QR'a erişimi olmayan biri için elle ekle.
+          </p>
+          <form onSubmit={addManual} className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1fr_auto]">
+            <input
+              type="text"
+              value={manualName}
+              onChange={(e) => setManualName(e.target.value)}
+              placeholder="Ad"
+              maxLength={40}
+              required
+              disabled={busy || state !== "idle"}
+              className="rounded-xl border border-brand-teal/15 bg-brand-night/60 px-4 py-2.5 text-sm text-brand-ice placeholder:text-brand-ice/30 outline-none focus:border-brand-teal disabled:opacity-40"
+            />
+            <input
+              type="text"
+              value={manualSurname}
+              onChange={(e) => setManualSurname(e.target.value)}
+              placeholder="Soyad"
+              maxLength={40}
+              required
+              disabled={busy || state !== "idle"}
+              className="rounded-xl border border-brand-teal/15 bg-brand-night/60 px-4 py-2.5 text-sm text-brand-ice placeholder:text-brand-ice/30 outline-none focus:border-brand-teal disabled:opacity-40"
+            />
+            <button
+              type="submit"
+              disabled={busy || state !== "idle" || !manualName.trim() || !manualSurname.trim()}
+              className="rounded-xl bg-gradient-to-r from-brand-teal to-brand-cyan px-5 py-2.5 text-sm font-bold text-brand-night transition hover:brightness-110 disabled:opacity-40"
+            >
+              Ekle
+            </button>
+          </form>
+        </section>
+
+        <section className="mt-6 rounded-2xl border border-brand-teal/15 bg-brand-card/50 p-6 backdrop-blur-xl">
+          <h2 className="mb-2 text-sm font-bold uppercase tracking-wider text-brand-ice/60">
+            Toplu İçe Aktar
+          </h2>
+          <p className="text-xs text-brand-ice/50">
+            Sheets/Excel/CSV'den isim listesi yapıştır veya dosya yükle. Her satır bir
+            kişi. Header satırı (Ad Soyad, Sıra…) otomatik atlanır.
+          </p>
+          <textarea
+            value={bulkText}
+            onChange={(e) => setBulkText(e.target.value)}
+            disabled={busy || state !== "idle"}
+            rows={6}
+            placeholder={`Ali Yılmaz\nAyşe Demir\nMehmet Çelik\n…`}
+            className="mt-3 w-full rounded-xl border border-brand-teal/15 bg-brand-night/60 p-3 text-sm text-brand-ice placeholder:text-brand-ice/30 outline-none focus:border-brand-teal disabled:opacity-40"
+          />
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <label
+              className={`cursor-pointer rounded-xl border border-brand-teal/30 bg-brand-teal/10 px-4 py-2 text-xs font-semibold text-brand-teal transition hover:bg-brand-teal/20 ${
+                busy || state !== "idle" ? "pointer-events-none opacity-40" : ""
+              }`}
+            >
+              Dosya Seç (.csv .txt)
+              <input
+                type="file"
+                accept=".csv,.txt,text/csv,text/plain"
+                className="hidden"
+                disabled={busy || state !== "idle"}
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) handleFile(f);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+            <button
+              onClick={addBulk}
+              disabled={busy || state !== "idle" || bulkText.trim().length === 0}
+              className="rounded-xl bg-gradient-to-r from-brand-violet to-brand-indigo px-5 py-2 text-sm font-bold text-white transition hover:brightness-110 disabled:opacity-40"
+            >
+              {bulkText.trim() ? `İçe Aktar (${parseBulkLines(bulkText).length} kişi)` : "İçe Aktar"}
+            </button>
+          </div>
         </section>
 
         <section className="mt-6 rounded-2xl border border-brand-teal/15 bg-brand-card/50 p-6 backdrop-blur-xl">
