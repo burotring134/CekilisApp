@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import dynamic from "next/dynamic";
+import Image from "next/image";
 import ParticipantList from "@/components/ParticipantList";
-import type { Participant, DrawState, StoreSnapshot } from "@/lib/store";
+import type { StoreSnapshot } from "@/lib/store";
 
 const Wheel = dynamic(() => import("@/components/Wheel"), { ssr: false });
 const WinnerReveal = dynamic(() => import("@/components/WinnerReveal"), { ssr: false });
@@ -33,7 +34,7 @@ export default function HomePage() {
         const data = (await res.json()) as StoreSnapshot;
         if (!cancelled) setSnapshot(data);
       } catch {
-        // network hiccup, ignore
+        // network hiccup
       }
     };
     tick();
@@ -59,11 +60,18 @@ export default function HomePage() {
   }, [snapshot.state]);
 
   return (
-    <main className="min-h-screen px-8 py-8">
-      <div className="mx-auto grid h-[calc(100vh-4rem)] max-w-[1800px] grid-cols-[1fr_360px] gap-8">
-        <section className="flex flex-col items-center justify-center rounded-3xl border border-white/10 bg-white/[0.04] p-10 shadow-[0_20px_80px_-20px_rgba(167,139,250,0.35)] backdrop-blur-xl">
+    <main className="min-h-screen px-6 py-6 lg:px-10 lg:py-8">
+      <div className="mx-auto grid h-[calc(100vh-3rem)] max-w-[1800px] grid-cols-1 gap-6 lg:h-[calc(100vh-4rem)] lg:grid-cols-[1fr_380px] lg:gap-8">
+        <section className="relative flex flex-col items-center justify-center overflow-hidden rounded-3xl border border-brand-teal/20 bg-brand-card/40 p-8 backdrop-blur-xl">
+          <div
+            className="pointer-events-none absolute inset-0 opacity-40"
+            style={{
+              background:
+                "radial-gradient(circle at 30% 20%, rgba(77,217,214,0.12) 0%, transparent 50%), radial-gradient(circle at 70% 80%, rgba(99,102,241,0.12) 0%, transparent 50%)",
+            }}
+          />
           <Header stage={stage} count={snapshot.participants.length} />
-          <div className="mt-4 flex flex-1 items-center justify-center w-full">
+          <div className="relative mt-6 flex w-full flex-1 items-center justify-center">
             {stage === "qr" && <QRStage url={joinUrl} count={snapshot.participants.length} />}
             {stage !== "qr" && (
               <Wheel
@@ -95,13 +103,18 @@ function Header({ stage, count }: { stage: "qr" | "wheel" | "winner"; count: num
   };
   const { sub, title } = labels[stage];
   return (
-    <header className="text-center">
-      <p className="text-xs sm:text-sm uppercase tracking-[0.4em] text-brand-accent">
-        Security Day IV — {sub}
-      </p>
-      <h1 className="mt-2 bg-gradient-to-r from-brand-rose via-white to-brand-accent bg-clip-text text-3xl font-bold text-transparent sm:text-4xl">
-        {title}
-      </h1>
+    <header className="relative z-10 flex items-center gap-4">
+      <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl bg-brand-night ring-2 ring-brand-teal/60 shadow-glow-sm">
+        <Image src="/mascot-face.jpg" alt="" fill sizes="56px" className="object-cover object-top" />
+      </div>
+      <div>
+        <p className="text-[10px] uppercase tracking-[0.4em] text-brand-teal sm:text-xs">
+          Security Day IV · {sub}
+        </p>
+        <h1 className="mt-1 bg-gradient-to-r from-brand-ice via-brand-teal to-brand-cyan bg-clip-text text-2xl font-bold text-transparent sm:text-3xl lg:text-4xl">
+          {title}
+        </h1>
+      </div>
     </header>
   );
 }
@@ -109,19 +122,30 @@ function Header({ stage, count }: { stage: "qr" | "wheel" | "winner"; count: num
 function QRStage({ url, count }: { url: string; count: number }) {
   return (
     <div className="flex flex-col items-center gap-6">
-      <div className="rounded-3xl bg-white p-8 glow">
-        {url ? (
-          <QRCodeSVG value={url} size={360} level="M" />
-        ) : (
-          <div className="h-[360px] w-[360px]" />
-        )}
+      <div className="relative">
+        <div className="absolute -inset-4 rounded-3xl bg-gradient-to-br from-brand-teal/30 via-brand-indigo/20 to-brand-violet/20 blur-2xl" />
+        <div className="relative rounded-3xl bg-white p-7 glow ring-4 ring-brand-teal/40">
+          {url ? (
+            <QRCodeSVG value={url} size={340} level="M" fgColor="#050810" bgColor="#ffffff" />
+          ) : (
+            <div className="h-[340px] w-[340px]" />
+          )}
+        </div>
       </div>
-      <p className="text-center text-lg text-white/70">
-        Telefonunla QR'ı okut, adını yaz, çekilişe katıl.
-      </p>
-      <p className="text-sm text-white/40 break-all">{url}</p>
-      <div className="rounded-full bg-brand-primary/20 px-6 py-2 text-base font-semibold text-brand-accent">
-        {count} kişi katıldı
+      <div className="flex flex-col items-center gap-2 text-center">
+        <p className="text-lg font-medium text-brand-ice">
+          Telefonunla QR'ı okut, çekilişe katıl
+        </p>
+        <p className="text-xs text-brand-ice/40 break-all">{url}</p>
+      </div>
+      <div className="flex items-center gap-3 rounded-full border border-brand-teal/30 bg-brand-teal/10 px-6 py-2.5 backdrop-blur">
+        <span className="relative flex h-2 w-2">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-teal opacity-75" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-brand-teal" />
+        </span>
+        <span className="text-sm font-semibold text-brand-ice">
+          {count} kişi katıldı
+        </span>
       </div>
     </div>
   );

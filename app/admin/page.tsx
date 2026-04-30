@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import type { StoreSnapshot } from "@/lib/store";
 
 const PASSWORD_STORAGE = "raffle-admin-pw-v1";
@@ -76,7 +77,9 @@ export default function AdminPage() {
       if (!data.ok) {
         setMessage(`Hata: ${data.reason}`);
       } else {
-        setMessage(`Çekiliş başladı. Kazanan: ${data.winner.name} (animasyon bittikten sonra "Sonucu Göster"e bas)`);
+        setMessage(
+          `Çekiliş başladı. Kazanan: ${data.winner.name} (animasyon bittikten sonra "Sonucu Göster"e bas)`
+        );
       }
     } finally {
       setBusy(false);
@@ -125,27 +128,39 @@ export default function AdminPage() {
 
   if (!authed) {
     return (
-      <main className="min-h-screen flex items-center justify-center px-6">
+      <main className="flex min-h-screen items-center justify-center px-6">
         <form
           onSubmit={(e) => {
             e.preventDefault();
             verify(password);
           }}
-          className="w-full max-w-sm rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur"
+          className="w-full max-w-sm rounded-2xl border border-brand-teal/20 bg-brand-card/60 p-7 backdrop-blur-xl"
         >
-          <h1 className="text-xl font-bold">Admin</h1>
-          <p className="mt-1 text-sm text-white/60">Şifre gir.</p>
+          <div className="mb-5 flex items-center gap-3">
+            <div className="relative h-12 w-12 overflow-hidden rounded-xl bg-brand-night ring-2 ring-brand-teal/60">
+              <Image src="/mascot-face.jpg" alt="" fill sizes="48px" className="object-cover object-top" />
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.3em] text-brand-teal">
+                Security Day IV
+              </p>
+              <h1 className="text-xl font-bold text-brand-ice">Admin</h1>
+            </div>
+          </div>
+          <label className="block text-[10px] uppercase tracking-[0.2em] text-brand-ice/50">
+            Şifre
+          </label>
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="mt-4 w-full rounded-lg border border-white/10 bg-black/30 px-4 py-3 text-base outline-none focus:border-brand-primary"
+            className="mt-1.5 w-full rounded-xl border border-brand-teal/15 bg-brand-night/60 px-4 py-3 text-base text-brand-ice outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/30"
             autoFocus
           />
-          {authError && <p className="mt-2 text-sm text-red-400">{authError}</p>}
+          {authError && <p className="mt-3 text-sm text-rose-300">{authError}</p>}
           <button
             type="submit"
-            className="mt-4 w-full rounded-lg bg-brand-primary px-4 py-3 font-semibold transition hover:bg-brand-primary/90"
+            className="mt-5 w-full rounded-xl bg-gradient-to-r from-brand-teal to-brand-cyan px-4 py-3 font-bold text-brand-night transition hover:brightness-110 active:scale-[0.99]"
           >
             Giriş
           </button>
@@ -156,72 +171,98 @@ export default function AdminPage() {
 
   const state = snapshot?.state ?? "idle";
   const stateLabel: Record<string, { text: string; color: string }> = {
-    idle: { text: "Hazırlık", color: "text-emerald-400" },
-    drawing: { text: "Çark dönüyor", color: "text-amber-400" },
-    finished: { text: "Tamamlandı", color: "text-brand-accent" },
+    idle: { text: "Hazırlık", color: "text-emerald-300" },
+    drawing: { text: "Çark dönüyor", color: "text-amber-300" },
+    finished: { text: "Tamamlandı", color: "text-brand-teal" },
   };
 
   return (
-    <main className="min-h-screen px-6 py-10">
+    <main className="min-h-screen px-6 py-8">
       <div className="mx-auto max-w-3xl">
         <header className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Admin Paneli</h1>
-          <span className={`text-sm font-semibold ${stateLabel[state].color}`}>
-            ● {stateLabel[state].text}
+          <div className="flex items-center gap-3">
+            <div className="relative h-11 w-11 overflow-hidden rounded-xl bg-brand-night ring-2 ring-brand-teal/60">
+              <Image src="/mascot-face.jpg" alt="" fill sizes="44px" className="object-cover object-top" />
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.3em] text-brand-teal">
+                Security Day IV
+              </p>
+              <h1 className="text-2xl font-bold text-brand-ice">Admin Paneli</h1>
+            </div>
+          </div>
+          <span
+            className={`flex items-center gap-2 rounded-full border border-current/20 bg-current/10 px-3 py-1.5 text-xs font-bold ${stateLabel[state].color}`}
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-current" />
+            {stateLabel[state].text}
           </span>
         </header>
 
-        <section className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-6">
-          <h2 className="mb-4 text-lg font-semibold">Kontrol</h2>
+        <section className="mt-6 rounded-2xl border border-brand-teal/15 bg-brand-card/50 p-6 backdrop-blur-xl">
+          <h2 className="mb-4 text-sm font-bold uppercase tracking-wider text-brand-ice/60">
+            Kontrol
+          </h2>
           <div className="flex flex-wrap gap-3">
             <button
               onClick={startDraw}
               disabled={busy || state !== "idle" || (snapshot?.participants.length ?? 0) === 0}
-              className="rounded-lg bg-brand-primary px-5 py-3 font-semibold transition hover:bg-brand-primary/90 disabled:opacity-40"
+              className="rounded-xl bg-gradient-to-r from-brand-teal to-brand-cyan px-5 py-3 text-sm font-bold text-brand-night shadow-glow-sm transition hover:brightness-110 active:scale-[0.98] disabled:opacity-30"
             >
-              🎲 Çekilişi Başlat
+              Çekilişi Başlat
             </button>
             <button
               onClick={revealWinner}
               disabled={busy || state !== "drawing"}
-              className="rounded-lg bg-amber-500 px-5 py-3 font-semibold text-black transition hover:bg-amber-400 disabled:opacity-40"
+              className="rounded-xl bg-gradient-to-r from-amber-300 to-amber-200 px-5 py-3 text-sm font-bold text-amber-900 transition hover:brightness-110 active:scale-[0.98] disabled:opacity-30"
             >
-              🎉 Sonucu Göster
+              Sonucu Göster
             </button>
             <button
               onClick={resetAll}
               disabled={busy}
-              className="rounded-lg border border-red-500/40 bg-red-500/10 px-5 py-3 font-semibold text-red-300 transition hover:bg-red-500/20 disabled:opacity-40"
+              className="rounded-xl border border-rose-400/30 bg-rose-500/10 px-5 py-3 text-sm font-bold text-rose-200 transition hover:bg-rose-500/20 active:scale-[0.98] disabled:opacity-30"
             >
-              🗑 Sıfırla
+              Sıfırla
             </button>
           </div>
-          {message && <p className="mt-4 text-sm text-white/70">{message}</p>}
+          {message && (
+            <p className="mt-4 rounded-xl border border-brand-teal/20 bg-brand-teal/5 p-3 text-sm text-brand-ice/80">
+              {message}
+            </p>
+          )}
           {snapshot?.winner && state !== "idle" && (
-            <p className="mt-4 rounded-lg bg-amber-500/10 px-4 py-3 text-amber-200">
-              <strong>Kazanan:</strong> {snapshot.winner.name}
+            <p className="mt-4 rounded-xl border border-amber-300/30 bg-amber-300/10 p-3 text-amber-100">
+              <strong className="font-bold">Kazanan:</strong> {snapshot.winner.name}
             </p>
           )}
         </section>
 
-        <section className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-6">
-          <h2 className="mb-4 text-lg font-semibold">
-            Katılımcılar ({snapshot?.participants.length ?? 0})
-          </h2>
+        <section className="mt-6 rounded-2xl border border-brand-teal/15 bg-brand-card/50 p-6 backdrop-blur-xl">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-sm font-bold uppercase tracking-wider text-brand-ice/60">
+              Katılımcılar
+            </h2>
+            <span className="rounded-full border border-brand-teal/30 bg-brand-teal/10 px-3 py-0.5 text-sm font-bold text-brand-teal">
+              {snapshot?.participants.length ?? 0}
+            </span>
+          </div>
           {!snapshot || snapshot.participants.length === 0 ? (
-            <p className="text-sm text-white/50">Henüz kayıt yok.</p>
+            <p className="text-sm text-brand-ice/40">Henüz kayıt yok.</p>
           ) : (
-            <ul className="divide-y divide-white/10">
+            <ul className="divide-y divide-brand-teal/10">
               {snapshot.participants.map((p, idx) => (
                 <li key={p.id} className="flex items-center justify-between py-3">
                   <span className="flex items-center gap-3">
-                    <span className="w-6 text-xs text-white/40">{idx + 1}</span>
-                    <span>{p.name}</span>
+                    <span className="flex h-7 w-7 items-center justify-center rounded-md bg-brand-ink text-xs font-bold text-brand-ice/50">
+                      {idx + 1}
+                    </span>
+                    <span className="text-brand-ice">{p.name}</span>
                   </span>
                   <button
                     onClick={() => removeParticipant(p.id, p.name)}
                     disabled={busy || state !== "idle"}
-                    className="rounded px-3 py-1 text-xs text-red-300 transition hover:bg-red-500/10 disabled:opacity-30"
+                    className="rounded-lg px-3 py-1.5 text-xs font-semibold text-rose-300 transition hover:bg-rose-500/10 disabled:opacity-30"
                   >
                     Sil
                   </button>

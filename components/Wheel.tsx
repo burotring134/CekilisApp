@@ -1,6 +1,7 @@
 "use client";
 
 import { motion, useAnimation } from "framer-motion";
+import Image from "next/image";
 import { useEffect, useMemo, useRef } from "react";
 import type { Participant } from "@/lib/store";
 
@@ -12,17 +13,17 @@ interface WheelProps {
   onSpinEnd?: () => void;
 }
 
-const PASTEL = [
-  "#fbcfe8", // pink
-  "#bae6fd", // sky
-  "#bbf7d0", // mint
-  "#fef3c7", // butter
-  "#ddd6fe", // lavender
-  "#fecaca", // rose
-  "#a7f3d0", // seafoam
-  "#fed7aa", // peach
-  "#e9d5ff", // lilac
-  "#bfdbfe", // baby blue
+const SLICE_COLORS = [
+  "#0e7490", // cyan-700 deep
+  "#155e75", // cyan-800 darker
+  "#1e3a8a", // indigo deep
+  "#3730a3", // indigo dark
+  "#0891b2", // cyan-600
+  "#1d4ed8", // blue-700
+  "#0e7490",
+  "#312e81", // indigo-900
+  "#0369a1", // sky-700
+  "#1e40af",
 ];
 
 const VIEW = 600;
@@ -46,7 +47,7 @@ export default function Wheel({
       startAngle: i * sliceAngle,
       endAngle: (i + 1) * sliceAngle,
       midAngle: i * sliceAngle + sliceAngle / 2,
-      color: PASTEL[i % PASTEL.length],
+      color: SLICE_COLORS[i % SLICE_COLORS.length],
     }));
   }, [participants]);
 
@@ -81,7 +82,7 @@ export default function Wheel({
 
   if (segments.length === 0) {
     return (
-      <div className="flex aspect-square w-full max-w-[560px] items-center justify-center rounded-full border-4 border-dashed border-white/20 text-white/40">
+      <div className="flex aspect-square w-full max-w-[560px] items-center justify-center rounded-full border-4 border-dashed border-brand-teal/30 text-brand-ice/40">
         Katılımcı bekleniyor…
       </div>
     );
@@ -89,64 +90,94 @@ export default function Wheel({
 
   const radius = VIEW / 2;
   const center = radius;
-  const labelRadius = radius * 0.62;
-  const fontSize = Math.max(11, Math.min(22, 320 / Math.max(8, segments.length)));
+  const labelRadius = radius * 0.68;
+  const fontSize = Math.max(11, Math.min(20, 320 / Math.max(8, segments.length)));
   const maxChars = Math.max(8, Math.floor(40 / Math.max(1, segments.length / 6)));
+  const hubRadius = radius * 0.22;
 
   return (
-    <div className="relative aspect-square w-full max-w-[620px]">
+    <div className="relative aspect-square w-full max-w-[640px]">
+      {/* Outer halo glow */}
       <div
-        className="pointer-events-none absolute z-20 -translate-x-1/2"
-        style={{ left: "50%", top: "-2%" }}
+        className="pointer-events-none absolute inset-[-8%] rounded-full opacity-70 blur-3xl"
+        style={{
+          background:
+            "radial-gradient(circle, rgba(77,217,214,0.35) 0%, rgba(99,102,241,0.18) 40%, transparent 70%)",
+        }}
+      />
+
+      {/* Pointer */}
+      <div
+        className="pointer-events-none absolute z-30 -translate-x-1/2"
+        style={{ left: "50%", top: "-3%" }}
       >
-        <svg width="56" height="56" viewBox="0 0 56 56">
+        <svg width="64" height="68" viewBox="0 0 64 68">
+          <defs>
+            <linearGradient id="pointerGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stopColor="#a5f3fc" />
+              <stop offset="1" stopColor="#0891b2" />
+            </linearGradient>
+          </defs>
           <path
-            d="M28 50 L8 8 L48 8 Z"
-            fill="#fde68a"
-            stroke="#92400e"
-            strokeWidth="2"
+            d="M32 60 L6 8 L58 8 Z"
+            fill="url(#pointerGrad)"
+            stroke="#0d1426"
+            strokeWidth="3"
             strokeLinejoin="round"
-            style={{ filter: "drop-shadow(0 6px 12px rgba(0,0,0,0.4))" }}
+            style={{ filter: "drop-shadow(0 6px 20px rgba(77,217,214,0.6))" }}
           />
+          <circle cx="32" cy="20" r="3" fill="#0d1426" />
         </svg>
       </div>
 
+      {/* Wheel */}
       <motion.svg
         animate={controls}
         initial={{ rotate: 0 }}
         viewBox={`0 0 ${VIEW} ${VIEW}`}
-        className="h-full w-full drop-shadow-[0_0_60px_rgba(221,214,254,0.35)]"
+        className="relative h-full w-full"
+        style={{ filter: "drop-shadow(0 0 40px rgba(77,217,214,0.25))" }}
       >
-        <circle cx={center} cy={center} r={radius - 1} fill="#1e1b4b" />
+        <defs>
+          {segments.map((seg, i) => (
+            <radialGradient key={`g-${i}`} id={`slice-${i}`} cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor={seg.color} stopOpacity="1" />
+              <stop offset="100%" stopColor={seg.color} stopOpacity="0.8" />
+            </radialGradient>
+          ))}
+        </defs>
+
+        {/* Outer ring */}
+        <circle cx={center} cy={center} r={radius - 2} fill="#0d1426" stroke="#4dd9d6" strokeWidth="3" />
 
         {segments.length === 1 ? (
           <g>
             <circle
               cx={center}
               cy={center}
-              r={radius - 6}
-              fill={segments[0].color}
-              stroke="#1e1b4b"
+              r={radius - 8}
+              fill={`url(#slice-0)`}
+              stroke="#0d1426"
               strokeWidth={3}
             />
             <text
               x={center}
-              y={center - labelRadius * 0.4}
-              fill="#1e1b4b"
-              fontSize={fontSize * 1.5}
+              y={center - radius * 0.35}
+              fill="#ecfeff"
+              fontSize={fontSize * 1.6}
               fontWeight={800}
               textAnchor="middle"
               dominantBaseline="middle"
-              style={{ pointerEvents: "none" }}
+              style={{ pointerEvents: "none", letterSpacing: "0.02em" }}
             >
               {truncate(segments[0].participant.name, 20)}
             </text>
           </g>
         ) : (
-          segments.map((seg) => {
+          segments.map((seg, i) => {
             const startRad = (seg.startAngle - 90) * (Math.PI / 180);
             const endRad = (seg.endAngle - 90) * (Math.PI / 180);
-            const r = radius - 6;
+            const r = radius - 8;
             const x1 = center + r * Math.cos(startRad);
             const y1 = center + r * Math.sin(startRad);
             const x2 = center + r * Math.cos(endRad);
@@ -161,17 +192,21 @@ export default function Wheel({
 
             return (
               <g key={seg.participant.id}>
-                <path d={path} fill={seg.color} stroke="#1e1b4b" strokeWidth={2} />
+                <path d={path} fill={`url(#slice-${i})`} stroke="#0d1426" strokeWidth={2} />
                 <text
                   x={labelX}
                   y={labelY}
-                  fill="#1e1b4b"
+                  fill="#ecfeff"
                   fontSize={fontSize}
                   fontWeight={700}
                   textAnchor="middle"
                   dominantBaseline="middle"
                   transform={`rotate(${seg.midAngle}, ${labelX}, ${labelY})`}
-                  style={{ pointerEvents: "none" }}
+                  style={{
+                    pointerEvents: "none",
+                    textShadow: "0 1px 3px rgba(0,0,0,0.7)",
+                    letterSpacing: "0.02em",
+                  }}
                 >
                   {display}
                 </text>
@@ -180,26 +215,41 @@ export default function Wheel({
           })
         )}
 
+        {/* Inner accent ring */}
         <circle
           cx={center}
           cy={center}
-          r={radius - 4}
+          r={hubRadius + 6}
           fill="none"
-          stroke="#fef3c7"
-          strokeWidth={6}
-          opacity={0.9}
-        />
-
-        <circle
-          cx={center}
-          cy={center}
-          r={radius * 0.1}
-          fill="#fef3c7"
-          stroke="#92400e"
+          stroke="#4dd9d6"
           strokeWidth={3}
+          opacity={0.8}
         />
-        <circle cx={center} cy={center} r={radius * 0.04} fill="#92400e" />
       </motion.svg>
+
+      {/* Mascot at center (does NOT rotate with wheel) */}
+      <div
+        className="pointer-events-none absolute z-20 flex items-center justify-center rounded-full bg-brand-night ring-4 ring-brand-teal"
+        style={{
+          left: "50%",
+          top: "50%",
+          width: `${(hubRadius * 2 * 100) / VIEW}%`,
+          height: `${(hubRadius * 2 * 100) / VIEW}%`,
+          transform: "translate(-50%, -50%)",
+          boxShadow: "0 0 30px rgba(77,217,214,0.6), inset 0 0 20px rgba(77,217,214,0.15)",
+        }}
+      >
+        <div className="relative h-[88%] w-[88%] overflow-hidden rounded-full">
+          <Image
+            src="/mascot-face.jpg"
+            alt="Maskot"
+            fill
+            sizes="200px"
+            className="object-cover object-top"
+            priority
+          />
+        </div>
+      </div>
     </div>
   );
 }
