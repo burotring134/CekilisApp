@@ -130,6 +130,12 @@ export default function JoinPage() {
                 <br />
                 ana ekrandaki listede gözükeceksin.
               </p>
+            </div>
+
+            <div className="mt-6 border-t border-brand-teal/15 pt-5">
+              <p className="text-center text-xs text-brand-ice/50">
+                Bu cihazdan başkası katılacak mı?
+              </p>
               <button
                 onClick={() => {
                   if (typeof window !== "undefined") {
@@ -140,9 +146,9 @@ export default function JoinPage() {
                   setSurname("");
                   setStatus("ready");
                 }}
-                className="mt-5 text-xs text-brand-ice/40 underline-offset-4 hover:text-brand-ice/70 hover:underline"
+                className="mt-3 w-full rounded-xl border-2 border-brand-teal/50 bg-brand-teal/10 px-4 py-3 text-base font-bold text-brand-teal transition hover:bg-brand-teal/20 active:scale-[0.99]"
               >
-                Yeniden katıl
+                Yeniden Katıl
               </button>
             </div>
           </Card>
