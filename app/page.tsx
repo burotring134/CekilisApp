@@ -60,11 +60,6 @@ export default function HomePage() {
     return "qr";
   }, [snapshot.state]);
 
-  const eligibleParticipants = useMemo(() => {
-    const past = new Set(snapshot.pastWinnerIds ?? []);
-    return snapshot.participants.filter((p) => !past.has(p.id));
-  }, [snapshot.participants, snapshot.pastWinnerIds]);
-
   const handleSpinEnd = async () => {
     try {
       await fetch("/api/draw", { method: "PATCH", cache: "no-store" });
@@ -89,7 +84,7 @@ export default function HomePage() {
             {stage === "qr" && <QRStage url={joinUrl} count={snapshot.participants.length} />}
             {stage !== "qr" && (
               <Wheel
-                participants={eligibleParticipants}
+                participants={snapshot.participants}
                 spinning={snapshot.state === "drawing"}
                 winnerId={snapshot.winner?.id ?? null}
                 spinSeed={snapshot.spinSeed}
@@ -102,7 +97,6 @@ export default function HomePage() {
         <ParticipantList
           participants={snapshot.participants}
           highlightId={snapshot.state === "finished" ? snapshot.winner?.id : null}
-          pastWinnerIds={snapshot.pastWinnerIds ?? []}
         />
       </div>
 

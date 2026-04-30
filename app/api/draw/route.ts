@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  addPastWinnerId,
-  getPastWinnerIds,
   getState,
   listParticipants,
   setSpinSeed,
   setState,
   setWinner,
-  getWinner,
 } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -28,26 +25,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, reason: "already-drawing" }, { status: 409 });
   }
 
-  const [participants, pastIds] = await Promise.all([
-    listParticipants(),
-    getPastWinnerIds(),
-  ]);
-  const pastSet = new Set(pastIds);
-  const eligible = participants.filter((p) => !pastSet.has(p.id));
-
-  if (eligible.length === 0) {
-    return NextResponse.json({ ok: false, reason: "no-eligible" }, { status: 400 });
+  const participants = await listParticipants();
+  if (participants.length === 0) {
+    return NextResponse.json({ ok: false, reason: "no-participants" }, { status: 400 });
   }
 
-  const winnerIndex = Math.floor(Math.random() * eligible.length);
-  const winner = eligible[winnerIndex];
+  const winnerIndex = Math.floor(Math.random() * participants.length);
+  const winner = participants[winnerIndex];
   const seed = Math.random();
 
   await setState("drawing");
   await setSpinSeed(seed);
   await setWinner(winner);
 
-  return NextResponse.json({ ok: true, winner, seed, eligibleCount: eligible.length });
+  return NextResponse.json({ ok: true, winner, seed });
 }
 
 export async function PATCH() {
@@ -70,9 +61,6 @@ export async function PUT(req: NextRequest) {
   if (state !== "finished") {
     return NextResponse.json({ ok: false, reason: "not-finished" }, { status: 409 });
   }
-
-  const winner = await getWinner();
-  if (winner) await addPastWinnerId(winner.id);
 
   await setWinner(null);
   await setSpinSeed(null);

@@ -135,7 +135,7 @@ export default function AdminPage() {
       });
       const data = await res.json();
       if (data.ok) {
-        setMessage("Yeni çekiliş için hazır. Önceki kazanan havuzdan çıkarıldı.");
+        setMessage("Yeni çekiliş için hazır. (Kazananı listeden çıkarmak istersen yanındaki Sil butonunu kullan.)");
       } else {
         setMessage(`Hata: ${data.reason}`);
       }
@@ -193,10 +193,6 @@ export default function AdminPage() {
     drawing: { text: "Çark dönüyor", color: "text-amber-300" },
     finished: { text: "Tamamlandı", color: "text-brand-teal" },
   };
-  const pastWinnerSet = new Set(snapshot?.pastWinnerIds ?? []);
-  const eligibleCount = (snapshot?.participants ?? []).filter(
-    (p) => !pastWinnerSet.has(p.id)
-  ).length;
 
   return (
     <main className="min-h-screen px-6 py-8">
@@ -228,11 +224,7 @@ export default function AdminPage() {
           <div className="flex flex-wrap gap-3">
             <button
               onClick={startDraw}
-              disabled={
-                busy ||
-                state !== "idle" ||
-                eligibleCount === 0
-              }
+              disabled={busy || state !== "idle" || (snapshot?.participants.length ?? 0) === 0}
               className="rounded-xl bg-gradient-to-r from-brand-teal to-brand-cyan px-5 py-3 text-sm font-bold text-brand-night shadow-glow-sm transition hover:brightness-110 active:scale-[0.98] disabled:opacity-30"
             >
               Çekilişi Başlat
@@ -276,35 +268,21 @@ export default function AdminPage() {
             <h2 className="text-sm font-bold uppercase tracking-wider text-brand-ice/60">
               Katılımcılar
             </h2>
-            <div className="flex items-center gap-2">
-              <span className="rounded-full border border-brand-violet/30 bg-brand-violet/10 px-3 py-0.5 text-xs font-bold text-brand-violet">
-                Çekilişe katılacak: {eligibleCount}
-              </span>
-              <span className="rounded-full border border-brand-teal/30 bg-brand-teal/10 px-3 py-0.5 text-sm font-bold text-brand-teal">
-                {snapshot?.participants.length ?? 0}
-              </span>
-            </div>
+            <span className="rounded-full border border-brand-teal/30 bg-brand-teal/10 px-3 py-0.5 text-sm font-bold text-brand-teal">
+              {snapshot?.participants.length ?? 0}
+            </span>
           </div>
           {!snapshot || snapshot.participants.length === 0 ? (
             <p className="text-sm text-brand-ice/40">Henüz kayıt yok.</p>
           ) : (
             <ul className="divide-y divide-brand-teal/10">
-              {snapshot.participants.map((p, idx) => {
-                const wonBefore = pastWinnerSet.has(p.id);
-                return (
+              {snapshot.participants.map((p, idx) => (
                 <li key={p.id} className="flex items-center justify-between py-3">
                   <span className="flex items-center gap-3">
                     <span className="flex h-7 w-7 items-center justify-center rounded-md bg-brand-ink text-xs font-bold text-brand-ice/50">
                       {idx + 1}
                     </span>
-                    <span className={wonBefore ? "text-brand-ice/40 line-through" : "text-brand-ice"}>
-                      {p.name}
-                    </span>
-                    {wonBefore && (
-                      <span className="rounded-full border border-amber-300/40 bg-amber-300/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-200">
-                        ★ Kazandı
-                      </span>
-                    )}
+                    <span className="text-brand-ice">{p.name}</span>
                   </span>
                   <button
                     onClick={() => removeParticipant(p.id, p.name)}
@@ -314,8 +292,7 @@ export default function AdminPage() {
                     Sil
                   </button>
                 </li>
-                );
-              })}
+              ))}
             </ul>
           )}
         </section>
