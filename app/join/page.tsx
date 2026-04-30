@@ -49,27 +49,29 @@ export default function JoinPage() {
       />
 
       <div className="relative w-full max-w-sm">
-        <header className="mb-8 flex flex-col items-center text-center">
-          <div className="relative mb-5 h-24 w-24 overflow-hidden rounded-3xl bg-brand-night ring-2 ring-brand-teal/60 shadow-glow float">
-            <Image
-              src="/mascot-face.jpg"
-              alt="Maskot"
-              fill
-              sizes="96px"
-              className="object-cover object-top"
-              priority
-            />
-          </div>
-          <p className="text-[10px] uppercase tracking-[0.4em] text-brand-teal">
-            Security Day IV
-          </p>
-          <h1 className="mt-2 bg-gradient-to-r from-brand-ice via-brand-teal to-brand-cyan bg-clip-text text-3xl font-bold text-transparent">
-            Çekilişe Katıl
-          </h1>
-          <p className="mt-2 text-sm text-brand-ice/60">
-            Adını ve soyadını yaz, çekilişe dahil ol.
-          </p>
-        </header>
+        {status !== "success" && (
+          <header className="mb-8 flex flex-col items-center text-center">
+            <div className="relative mb-5 h-24 w-24 overflow-hidden rounded-3xl bg-brand-night ring-2 ring-brand-teal/60 shadow-glow float">
+              <Image
+                src="/mascot-face.jpg"
+                alt="Maskot"
+                fill
+                sizes="96px"
+                className="object-cover object-top"
+                priority
+              />
+            </div>
+            <p className="text-[10px] uppercase tracking-[0.4em] text-brand-teal">
+              Security Day IV
+            </p>
+            <h1 className="mt-2 bg-gradient-to-r from-brand-ice via-brand-teal to-brand-cyan bg-clip-text text-3xl font-bold text-transparent">
+              Çekilişe Katıl
+            </h1>
+            <p className="mt-2 text-sm text-brand-ice/60">
+              Adını ve soyadını yaz, çekilişe dahil ol.
+            </p>
+          </header>
+        )}
 
         {(status === "ready" || status === "submitting" || status === "error") && (
           <Card>
@@ -103,36 +105,36 @@ export default function JoinPage() {
         )}
 
         {status === "success" && (
-          <Card accent="teal">
-            <div className="text-center">
-              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-brand-teal/15 text-3xl text-brand-teal">
+          <div className="flex flex-col items-center text-center">
+            <div className="relative mb-6">
+              <div className="absolute -inset-6 rounded-full bg-brand-teal/30 blur-2xl" />
+              <div className="relative h-32 w-32 overflow-hidden rounded-full bg-brand-night ring-4 ring-brand-teal shadow-glow float">
+                <Image
+                  src="/mascot-face.jpg"
+                  alt="Maskot"
+                  fill
+                  sizes="128px"
+                  className="object-cover object-top"
+                  priority
+                />
+              </div>
+              <div className="absolute -right-2 -top-2 flex h-12 w-12 items-center justify-center rounded-full bg-brand-teal text-2xl font-bold text-brand-night shadow-glow ring-4 ring-brand-night">
                 ✓
               </div>
-              <h2 className="text-xl font-bold text-brand-ice">Kaydoldun!</h2>
-              <p className="mt-1 text-sm text-brand-ice/60">
-                <span className="font-semibold text-brand-teal">{savedName}</span>
-                <br />
-                ana ekrandaki listede gözükeceksin.
-              </p>
             </div>
-
-            <div className="mt-6 border-t border-brand-teal/15 pt-5">
-              <p className="text-center text-xs text-brand-ice/50">
-                Bu cihazdan başkası katılacak mı?
-              </p>
-              <button
-                onClick={() => {
-                  setSavedName("");
-                  setName("");
-                  setSurname("");
-                  setStatus("ready");
-                }}
-                className="mt-3 w-full rounded-xl border-2 border-brand-teal/50 bg-brand-teal/10 px-4 py-3 text-base font-bold text-brand-teal transition hover:bg-brand-teal/20 active:scale-[0.99]"
-              >
-                Yeniden Katıl
-              </button>
-            </div>
-          </Card>
+            <p className="text-[10px] uppercase tracking-[0.4em] text-brand-teal">
+              Security Day IV
+            </p>
+            <h1 className="mt-2 bg-gradient-to-r from-brand-ice via-brand-teal to-brand-cyan bg-clip-text text-4xl font-bold text-transparent">
+              Kaydoldun!
+            </h1>
+            <p className="mt-3 text-base text-brand-ice/80">
+              <span className="font-semibold text-brand-teal">{savedName}</span>
+            </p>
+            <p className="mt-1 text-sm text-brand-ice/50">
+              Ana ekrandaki listede gözükeceksin. Bol şans! 🍀
+            </p>
+          </div>
         )}
 
         {status === "locked" && (
