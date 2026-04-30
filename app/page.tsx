@@ -16,9 +16,11 @@ export default function HomePage() {
     participants: [],
     winner: null,
     spinSeed: null,
+    finishedAt: null,
   });
   const [joinUrl, setJoinUrl] = useState("");
   const [showWinner, setShowWinner] = useState(false);
+  const [pageMountedAt] = useState(() => Date.now());
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -58,6 +60,16 @@ export default function HomePage() {
     if (snapshot.state === "drawing") return "wheel";
     return "qr";
   }, [snapshot.state]);
+
+  // Confetti only fires when the result is fresh (within 30s of being
+  // finalized) AND the page mount predates the reveal — late visitors
+  // who arrive after the celebration just see the winner card.
+  const showConfetti = useMemo(() => {
+    if (snapshot.state !== "finished" || !snapshot.finishedAt) return false;
+    const ageMs = Date.now() - snapshot.finishedAt;
+    if (ageMs > 30_000) return false;
+    return pageMountedAt <= snapshot.finishedAt + 1_000;
+  }, [snapshot.state, snapshot.finishedAt, pageMountedAt]);
 
   const handleSpinEnd = async () => {
     try {
@@ -99,7 +111,9 @@ export default function HomePage() {
         />
       </div>
 
-      {showWinner && snapshot.winner && <WinnerReveal winner={snapshot.winner} />}
+      {showWinner && snapshot.winner && (
+        <WinnerReveal winner={snapshot.winner} showConfetti={showConfetti} />
+      )}
     </main>
   );
 }

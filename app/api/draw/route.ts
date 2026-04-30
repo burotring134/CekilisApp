@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   getState,
   listParticipants,
+  setFinishedAt,
   setSpinSeed,
   setState,
   setWinner,
@@ -50,6 +51,7 @@ export async function PATCH() {
     return NextResponse.json({ ok: false, reason: "not-drawing" }, { status: 409 });
   }
   await setState("finished");
+  await setFinishedAt(Date.now());
   return NextResponse.json({ ok: true });
 }
 
@@ -64,6 +66,7 @@ export async function PUT(req: NextRequest) {
 
   await setWinner(null);
   await setSpinSeed(null);
+  await setFinishedAt(null);
   await setState("idle");
 
   return NextResponse.json({ ok: true });

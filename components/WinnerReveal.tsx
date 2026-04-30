@@ -8,10 +8,12 @@ import type { Participant } from "@/lib/store";
 
 interface WinnerRevealProps {
   winner: Participant;
+  showConfetti?: boolean;
 }
 
-export default function WinnerReveal({ winner }: WinnerRevealProps) {
+export default function WinnerReveal({ winner, showConfetti = true }: WinnerRevealProps) {
   useEffect(() => {
+    if (!showConfetti) return;
     let cancelled = false;
     const burst = () => {
       if (cancelled) return;
@@ -46,7 +48,7 @@ export default function WinnerReveal({ winner }: WinnerRevealProps) {
       clearTimeout(i2);
       clearTimeout(i3);
     };
-  }, [winner.id]);
+  }, [winner.id, showConfetti]);
 
   return (
     <motion.div

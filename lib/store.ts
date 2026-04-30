@@ -13,6 +13,7 @@ export interface StoreSnapshot {
   participants: Participant[];
   winner: Participant | null;
   spinSeed: number | null;
+  finishedAt: number | null;
 }
 
 const KEY = {
@@ -20,6 +21,7 @@ const KEY = {
   state: "raffle:state",
   winner: "raffle:winner",
   spinSeed: "raffle:spin",
+  finishedAt: "raffle:finished-at",
 };
 
 const hasUpstash = !!process.env.KV_REST_API_URL && !!process.env.KV_REST_API_TOKEN;
@@ -36,6 +38,7 @@ type MemoryStore = {
   state: DrawState;
   winner: Participant | null;
   spinSeed: number | null;
+  finishedAt: number | null;
 };
 
 const globalForMem = globalThis as unknown as { __raffleMem?: MemoryStore };
@@ -47,9 +50,10 @@ function mem(): MemoryStore {
       state: "idle",
       winner: null,
       spinSeed: null,
+      finishedAt: null,
     };
   }
-  return globalForMem.__raffleMem;
+  return globalForMem.__raffleMem!;
 }
 
 export async function addParticipant(
@@ -158,7 +162,13 @@ export async function setSpinSeed(seed: number | null): Promise<void> {
 
 export async function reset(): Promise<void> {
   if (redis) {
-    await redis.del(KEY.participants, KEY.state, KEY.winner, KEY.spinSeed);
+    await redis.del(
+      KEY.participants,
+      KEY.state,
+      KEY.winner,
+      KEY.spinSeed,
+      KEY.finishedAt
+    );
     return;
   }
   const store = mem();
@@ -166,14 +176,33 @@ export async function reset(): Promise<void> {
   store.state = "idle";
   store.winner = null;
   store.spinSeed = null;
+  store.finishedAt = null;
+}
+
+export async function getFinishedAt(): Promise<number | null> {
+  if (redis) {
+    const v = await redis.get<number | null>(KEY.finishedAt);
+    return v ?? null;
+  }
+  return mem().finishedAt;
+}
+
+export async function setFinishedAt(timestamp: number | null): Promise<void> {
+  if (redis) {
+    if (timestamp === null) await redis.del(KEY.finishedAt);
+    else await redis.set(KEY.finishedAt, timestamp);
+    return;
+  }
+  mem().finishedAt = timestamp;
 }
 
 export async function snapshot(): Promise<StoreSnapshot> {
-  const [state, participants, winner, spinSeed] = await Promise.all([
+  const [state, participants, winner, spinSeed, finishedAt] = await Promise.all([
     getState(),
     listParticipants(),
     getWinner(),
     getSpinSeed(),
+    getFinishedAt(),
   ]);
-  return { state, participants, winner, spinSeed };
+  return { state, participants, winner, spinSeed, finishedAt };
 }
