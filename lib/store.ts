@@ -13,18 +13,13 @@ export interface StoreSnapshot {
   participants: Participant[];
   winner: Participant | null;
   spinSeed: number | null;
-  pastWinnerIds: string[];
 }
 
 const KEY = {
   participants: "raffle:participants",
-  fingerprints: "raffle:fingerprints",
-  idToFp: "raffle:id-to-fp",
-  ips: "raffle:ips",
   state: "raffle:state",
   winner: "raffle:winner",
   spinSeed: "raffle:spin",
-  pastWinners: "raffle:past-winners",
 };
 
 const hasUpstash = !!process.env.KV_REST_API_URL && !!process.env.KV_REST_API_TOKEN;
@@ -38,13 +33,9 @@ const redis = hasUpstash
 
 type MemoryStore = {
   participants: Map<string, Participant>;
-  fingerprints: Set<string>;
-  idToFp: Map<string, string>;
-  ips: Set<string>;
   state: DrawState;
   winner: Participant | null;
   spinSeed: number | null;
-  pastWinnerIds: string[];
 };
 
 const globalForMem = globalThis as unknown as { __raffleMem?: MemoryStore };
@@ -53,49 +44,28 @@ function mem(): MemoryStore {
   if (!globalForMem.__raffleMem) {
     globalForMem.__raffleMem = {
       participants: new Map(),
-      fingerprints: new Set(),
-      idToFp: new Map(),
-      ips: new Set(),
       state: "idle",
       winner: null,
       spinSeed: null,
-      pastWinnerIds: [],
     };
   }
   return globalForMem.__raffleMem;
 }
 
 export async function addParticipant(
-  participant: Participant,
-  fingerprint: string,
-  _ip: string
+  participant: Participant
 ): Promise<{ ok: boolean; reason?: string }> {
   if (redis) {
-    const fpExists = await redis.sismember(KEY.fingerprints, fingerprint);
-    if (fpExists) return { ok: false, reason: "duplicate-device" };
     const state = (await redis.get<DrawState>(KEY.state)) ?? "idle";
     if (state !== "idle") return { ok: false, reason: "draw-locked" };
-
     await redis.hset(KEY.participants, { [participant.id]: JSON.stringify(participant) });
-    await redis.sadd(KEY.fingerprints, fingerprint);
-    await redis.hset(KEY.idToFp, { [participant.id]: fingerprint });
     return { ok: true };
   }
 
   const store = mem();
-  if (store.fingerprints.has(fingerprint)) return { ok: false, reason: "duplicate-device" };
   if (store.state !== "idle") return { ok: false, reason: "draw-locked" };
   store.participants.set(participant.id, participant);
-  store.fingerprints.add(fingerprint);
-  store.idToFp.set(participant.id, fingerprint);
   return { ok: true };
-}
-
-export async function isFingerprintRegistered(fingerprint: string): Promise<boolean> {
-  if (redis) {
-    return Boolean(await redis.sismember(KEY.fingerprints, fingerprint));
-  }
-  return mem().fingerprints.has(fingerprint);
 }
 
 export async function listParticipants(): Promise<Participant[]> {
@@ -112,17 +82,10 @@ export async function listParticipants(): Promise<Participant[]> {
 
 export async function deleteParticipant(id: string): Promise<void> {
   if (redis) {
-    const fp = await redis.hget<string>(KEY.idToFp, id);
     await redis.hdel(KEY.participants, id);
-    await redis.hdel(KEY.idToFp, id);
-    if (fp) await redis.srem(KEY.fingerprints, fp);
     return;
   }
-  const store = mem();
-  const fp = store.idToFp.get(id);
-  store.participants.delete(id);
-  store.idToFp.delete(id);
-  if (fp) store.fingerprints.delete(fp);
+  mem().participants.delete(id);
 }
 
 export async function getState(): Promise<DrawState> {
@@ -177,59 +140,22 @@ export async function setSpinSeed(seed: number | null): Promise<void> {
 
 export async function reset(): Promise<void> {
   if (redis) {
-    await redis.del(
-      KEY.participants,
-      KEY.fingerprints,
-      KEY.idToFp,
-      KEY.ips,
-      KEY.state,
-      KEY.winner,
-      KEY.spinSeed,
-      KEY.pastWinners
-    );
+    await redis.del(KEY.participants, KEY.state, KEY.winner, KEY.spinSeed);
     return;
   }
   const store = mem();
   store.participants.clear();
-  store.fingerprints.clear();
-  store.idToFp.clear();
-  store.ips.clear();
   store.state = "idle";
   store.winner = null;
   store.spinSeed = null;
-  store.pastWinnerIds = [];
-}
-
-export async function getPastWinnerIds(): Promise<string[]> {
-  if (redis) {
-    return (await redis.lrange<string>(KEY.pastWinners, 0, -1)) ?? [];
-  }
-  return [...mem().pastWinnerIds];
-}
-
-export async function addPastWinnerId(id: string): Promise<void> {
-  if (redis) {
-    await redis.rpush(KEY.pastWinners, id);
-    return;
-  }
-  mem().pastWinnerIds.push(id);
-}
-
-export async function clearPastWinners(): Promise<void> {
-  if (redis) {
-    await redis.del(KEY.pastWinners);
-    return;
-  }
-  mem().pastWinnerIds = [];
 }
 
 export async function snapshot(): Promise<StoreSnapshot> {
-  const [state, participants, winner, spinSeed, pastWinnerIds] = await Promise.all([
+  const [state, participants, winner, spinSeed] = await Promise.all([
     getState(),
     listParticipants(),
     getWinner(),
     getSpinSeed(),
-    getPastWinnerIds(),
   ]);
-  return { state, participants, winner, spinSeed, pastWinnerIds };
+  return { state, participants, winner, spinSeed };
 }

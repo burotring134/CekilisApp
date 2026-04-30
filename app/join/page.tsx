@@ -2,67 +2,37 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import FingerprintJS from "@fingerprintjs/fingerprintjs";
 
 const STORAGE_KEY = "raffle-joined-v1";
 
-type Status = "loading" | "ready" | "submitting" | "success" | "duplicate" | "locked" | "error";
+type Status = "ready" | "submitting" | "success" | "locked" | "error";
 
 export default function JoinPage() {
-  const [status, setStatus] = useState<Status>("loading");
-  const [fingerprint, setFingerprint] = useState<string | null>(null);
+  const [status, setStatus] = useState<Status>("ready");
   const [name, setName] = useState("");
   const [surname, setSurname] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [savedName, setSavedName] = useState("");
 
   useEffect(() => {
-    (async () => {
-      try {
-        const fp = await FingerprintJS.load();
-        const result = await fp.get();
-        const visitorId = result.visitorId;
-        setFingerprint(visitorId);
-
-        const res = await fetch(`/api/check?fingerprint=${encodeURIComponent(visitorId)}`, {
-          cache: "no-store",
-        });
-        const data = await res.json();
-
-        if (data.registered) {
-          const localName = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
-          if (localName) setSavedName(localName);
-          setStatus("duplicate");
-          return;
-        }
-
-        if (typeof window !== "undefined") {
-          localStorage.removeItem(STORAGE_KEY);
-        }
-
-        if (data.state === "drawing" || data.state === "finished") {
-          setStatus("locked");
-          return;
-        }
-
-        setStatus("ready");
-      } catch {
-        setStatus("error");
-        setErrorMessage("Cihaz tanımlanamadı, lütfen sayfayı yenileyin.");
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        setSavedName(saved);
+        setStatus("success");
       }
-    })();
+    }
   }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!fingerprint) return;
     setStatus("submitting");
     setErrorMessage("");
     try {
       const res = await fetch("/api/participants", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, surname, fingerprint }),
+        body: JSON.stringify({ name, surname }),
       });
       const data = await res.json();
       if (data.ok) {
@@ -72,8 +42,6 @@ export default function JoinPage() {
         }
         setSavedName(fullName);
         setStatus("success");
-      } else if (data.reason === "duplicate-device") {
-        setStatus("duplicate");
       } else if (data.reason === "draw-locked") {
         setStatus("locked");
       } else {
@@ -119,12 +87,6 @@ export default function JoinPage() {
           </p>
         </header>
 
-        {status === "loading" && (
-          <Card>
-            <p className="text-center text-sm text-brand-ice/70">Cihaz hazırlanıyor…</p>
-          </Card>
-        )}
-
         {(status === "ready" || status === "submitting" || status === "error") && (
           <Card>
             <form onSubmit={submit}>
@@ -168,28 +130,20 @@ export default function JoinPage() {
                 <br />
                 ana ekrandaki listede gözükeceksin.
               </p>
-            </div>
-          </Card>
-        )}
-
-        {status === "duplicate" && (
-          <Card accent="amber">
-            <div className="text-center">
-              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-amber-300/15 text-3xl text-amber-300">
-                ⚠
-              </div>
-              <h2 className="text-xl font-bold text-brand-ice">Zaten kayıtlısın</h2>
-              <p className="mt-1 text-sm text-brand-ice/60">
-                {savedName ? (
-                  <>
-                    Bu cihazdan{" "}
-                    <span className="font-semibold text-brand-teal">{savedName}</span> olarak
-                    katıldın.
-                  </>
-                ) : (
-                  "Bu cihazdan zaten bir kayıt yapılmış."
-                )}
-              </p>
+              <button
+                onClick={() => {
+                  if (typeof window !== "undefined") {
+                    localStorage.removeItem(STORAGE_KEY);
+                  }
+                  setSavedName("");
+                  setName("");
+                  setSurname("");
+                  setStatus("ready");
+                }}
+                className="mt-5 text-xs text-brand-ice/40 underline-offset-4 hover:text-brand-ice/70 hover:underline"
+              >
+                Yeniden katıl
+              </button>
             </div>
           </Card>
         )}
@@ -214,11 +168,10 @@ function Card({
   accent,
 }: {
   children: React.ReactNode;
-  accent?: "teal" | "amber" | "rose";
+  accent?: "teal" | "rose";
 }) {
   const accentStyles: Record<string, string> = {
     teal: "border-brand-teal/40 bg-brand-teal/5",
-    amber: "border-amber-300/40 bg-amber-300/5",
     rose: "border-rose-300/40 bg-rose-300/5",
   };
   const style = accent ? accentStyles[accent] : "border-brand-teal/15 bg-brand-card/60";
@@ -266,8 +219,6 @@ function humanizeReason(reason?: string): string {
       return "Ad ve soyad zorunlu.";
     case "name-too-long":
       return "İsim çok uzun, kısaltır mısın?";
-    case "missing-fingerprint":
-      return "Cihaz tanımlanamadı.";
     default:
       return "Bir şeyler ters gitti, tekrar dene.";
   }

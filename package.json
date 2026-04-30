@@ -8,7 +8,6 @@
     "start": "next start"
   },
   "dependencies": {
-    "@fingerprintjs/fingerprintjs": "4.5.1",
     "@upstash/redis": "1.34.3",
     "canvas-confetti": "1.9.3",
     "framer-motion": "11.18.2",

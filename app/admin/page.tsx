@@ -144,6 +144,21 @@ export default function AdminPage() {
     }
   }
 
+  function downloadCsv() {
+    if (typeof window === "undefined") return;
+    window.open("/api/export", "_blank");
+  }
+
+  function copySheetsFormula() {
+    if (typeof window === "undefined") return;
+    const url = `${window.location.origin}/api/export`;
+    const formula = `=IMPORTDATA("${url}")`;
+    navigator.clipboard.writeText(formula).then(
+      () => setMessage("Sheets formülü kopyalandı! Boş bir hücreye yapıştır."),
+      () => setMessage(`Kopyalama başarısız. Manuel yapıştır: ${formula}`)
+    );
+  }
+
   if (!authed) {
     return (
       <main className="flex min-h-screen items-center justify-center px-6">
@@ -261,6 +276,35 @@ export default function AdminPage() {
               <strong className="font-bold">Kazanan:</strong> {snapshot.winner.name}
             </p>
           )}
+        </section>
+
+        <section className="mt-6 rounded-2xl border border-brand-teal/15 bg-brand-card/50 p-6 backdrop-blur-xl">
+          <h2 className="mb-2 text-sm font-bold uppercase tracking-wider text-brand-ice/60">
+            Dışa Aktar
+          </h2>
+          <p className="text-xs text-brand-ice/50">
+            Katılımcıları CSV olarak indir veya Google Sheets'e canlı bağla.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <button
+              onClick={downloadCsv}
+              className="rounded-xl border border-brand-teal/30 bg-brand-teal/10 px-4 py-2.5 text-sm font-bold text-brand-teal transition hover:bg-brand-teal/20"
+            >
+              CSV İndir
+            </button>
+            <button
+              onClick={copySheetsFormula}
+              className="rounded-xl border border-brand-cyan/30 bg-brand-cyan/10 px-4 py-2.5 text-sm font-bold text-brand-cyan transition hover:bg-brand-cyan/20"
+            >
+              Sheets Formülü Kopyala
+            </button>
+          </div>
+          <p className="mt-3 text-[11px] leading-relaxed text-brand-ice/40">
+            <strong className="text-brand-ice/60">Sheets'e canlı bağlamak için:</strong> Yeni
+            bir Google Sheets aç, A1 hücresine "Sheets Formülü Kopyala" ile aldığın formülü
+            yapıştır. Sheet katılımcıları otomatik çeker, ~1 saatte bir yeniler. Manuel
+            yenilemek için A1'e tıklayıp Enter'a bas.
+          </p>
         </section>
 
         <section className="mt-6 rounded-2xl border border-brand-teal/15 bg-brand-card/50 p-6 backdrop-blur-xl">

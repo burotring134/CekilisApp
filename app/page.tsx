@@ -16,7 +16,6 @@ export default function HomePage() {
     participants: [],
     winner: null,
     spinSeed: null,
-    pastWinnerIds: [],
   });
   const [joinUrl, setJoinUrl] = useState("");
   const [showWinner, setShowWinner] = useState(false);
